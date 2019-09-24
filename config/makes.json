@@ -1,0 +1,23 @@
+{
+  "columns": {
+    "id": {
+      "type": "integer",
+      "maxLength": null,
+      "constraint": "primary key"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 255,
+      "constraint": null
+    }
+  },
+  "relationMappings": {
+    "id": {
+      "relation": "hasMany",
+      "join": {
+        "from": "id",
+        "to": "cars.make-id"
+      }
+    }
+  }
+}

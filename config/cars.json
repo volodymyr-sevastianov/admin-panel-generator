@@ -1,0 +1,23 @@
+{
+  "columns": {
+    "id": {
+      "type": "integer",
+      "maxLength": null,
+      "constraint": "primary key"
+    },
+    "make-id": {
+      "type": "integer",
+      "maxLength": null,
+      "constraint": "foreign key"
+    }
+  },
+  "relationMappings": {
+    "make-id": {
+      "relation": "belongsToMany",
+      "join": {
+        "from": "make-id",
+        "to": "makes.id"
+      }
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "columns": {
+    "id": {
+      "type": "integer",
+      "maxLength": null,
+      "constraint": "primary key"
+    },
+    "age": {
+      "type": "integer",
+      "maxLength": null,
+      "constraint": null
+    },
+    "sins-qty": {
+      "type": "bigint",
+      "maxLength": null,
+      "constraint": null
+    },
+    "biography": {
+      "type": "string",
+      "maxLength": null,
+      "constraint": null
+    },
+    "full-name": {
+      "type": "string",
+      "maxLength": 255,
+      "constraint": null
+    },
+    "money-qty": {
+      "type": "real",
+      "maxLength": null,
+      "constraint": null
+    },
+    "fingers-qty": {
+      "type": "numeric",
+      "maxLength": null,
+      "constraint": null
+    },
+    "male": {
+      "type": "boolean",
+      "maxLength": null,
+      "constraint": null
+    },
+    "dob": {
+      "type": "date",
+      "maxLength": null,
+      "constraint": null
+    },
+    "tob": {
+      "type": "date",
+      "maxLength": null,
+      "constraint": null
+    },
+    "created_at": {
+      "type": "date",
+      "maxLength": null,
+      "constraint": null
+    },
+    "updated_at": {
+      "type": "date",
+      "maxLength": null,
+      "constraint": null
+    },
+    "2-bit-code": {
+      "type": "byte array",
+      "maxLength": null,
+      "constraint": null
+    },
+    "yes-or-no": {
+      "type": "string",
+      "maxLength": null,
+      "constraint": "check"
+    },
+    "life-model": {
+      "type": "json",
+      "maxLength": null,
+      "constraint": null
+    },
+    "life-model-bitted": {
+      "type": "jsonb",
+      "maxLength": null,
+      "constraint": null
+    },
+    "id-number": {
+      "type": "uuid",
+      "maxLength": null,
+      "constraint": null
+    }
+  },
+  "relationMappings": {
+    "items": {
+      "relation": "manyToMany",
+      "join": {
+        "from": "users.id",
+        "through": {
+          "table": "users-items",
+          "from": "users-items.user-id",
+          "to": "users-items.item-id"
+        },
+        "to": "items.id",
+        "toTable": "items"
+      }
+    }
+  }
+}

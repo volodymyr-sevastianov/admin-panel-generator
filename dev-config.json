@@ -1,0 +1,26 @@
+{
+  "users": {
+    "table": {
+      "show": true
+    },
+    "columns": {
+      "id": {
+        "show": true
+      }
+    }
+  },
+  "cars": {
+    "table": {
+      "show": true
+    },
+    "columns": {
+      "id": {
+        "show": true
+      },
+      "make_id": {
+        "show": true,
+        "foreignSelectBox": true
+      }
+    }
+  }
+}

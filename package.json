@@ -1,0 +1,26 @@
+{
+  "dependencies": {
+    "express": "^4.17.1",
+    "knex": "^0.19.4",
+    "nodemon": "^1.19.2",
+    "pg": "^7.12.1"
+  },
+  "scripts": {
+    "migrate:make": "knex --knexfile=./knexfile.js migrate:make",
+    "migrate:latest": "knex --knexfile=./knexfile.js migrate:latest",
+    "migrate:rollback": "knex --knexfile=./knexfile.js migrate:rollback",
+    "seed:make": "knex --knexfile=./knexfile.js seed:make",
+    "seed:run": "knex --knexfile=./knexfile.js seed:run",
+    "dev": "nodemon --ignore src/configs/ --inspect --exec babel-node ./app.js"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.6.0",
+    "@babel/core": "^7.6.0",
+    "@babel/node": "^7.6.1",
+    "@babel/plugin-syntax-class-properties": "^7.2.0",
+    "@babel/preset-env": "^7.6.0",
+    "babel-node": "^0.0.1-security",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "nodemon": "^1.19.2"
+  }
+}
