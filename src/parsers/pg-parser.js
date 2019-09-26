@@ -18,9 +18,10 @@ const constraintTypeNames = {
 };
 
 class PostgresDBParser {
-  constructor(knex, schema) {
-    this.knex = knex;
+  constructor({ schema, repository }) {
     this.schema = schema;
+    this.repository = repository;
+    console.log(repository);
   }
 
   countOccurrences(arr, val) {
@@ -33,30 +34,32 @@ class PostgresDBParser {
     return accumulator;
   }
 
-  async getDBConfig() {
+  getDBConfig = async () => {
     // get meta-data from DB
-    let config = await this._getSchemaConfig({ schema: this.schema });
+    let config = await this.repository.getSchemaConfig({ schema: this.schema });
     // parse meta-data to necessary shape
     config = this._schemaParser(config);
     let tableConfig;
     for (let index = 0; index < config.tables.length; index++) {
       const tableName = config.tables[index];
       // get table meta-data
-      tableConfig = await this._getTableConfig({ table: tableName });
+      tableConfig = await this.repository.getTableConfig({ table: tableName });
       // get table constraints
-      tableConfig.constraints = await this._getConstraints({
+      tableConfig.constraints = await this.repository.getConstraints({
         table: tableName
       });
       // parse table and attach it to config
       config[tableName] = this._tableParser(tableConfig);
     }
     // get relationship data from DB
-    let relations = await this._getRelationships();
+    let relations = await this.repository.getRelationships({
+      schema: this.schema
+    });
     // attach relationship data
     config = this._attachRelations({ config, relations });
 
     return config;
-  }
+  };
 
   getPublicConfig(config) {
     let publicConfig = {};
@@ -213,7 +216,7 @@ class PostgresDBParser {
             let [manyToManyRelatedTable] = currentTableRelations[
               otherRelationIndex
             ].to.split(".");
-            // set MTM relation to the parent table table
+            // set MTM relation to the parent table
             config[primaryTableName].relations.push({
               [constants.MANY_TO_MANY]: {
                 from:
@@ -244,16 +247,22 @@ class PostgresDBParser {
   // this method is made for deleting relations to the same tables.
   // Those relations may be created by _resolveManyToMany() method
   _resolveRelationsDuplicates(config) {
+    // iterating through tables
     Object.keys(config).forEach(tableName => {
       if (tableName !== "tables") {
         let currentTable = config[tableName];
         let listOfIndexesOfRedudantRelations = [];
+        // iterating through relations of each table
         currentTable.relations.forEach(
           (currentTableRelation, currentTableRelationIndex) => {
+            // iterating through relation keys
             Object.keys(currentTableRelation).forEach(key => {
+              // another one iteration through relation of current table for duplicates check
               currentTable.relations.forEach(
                 (checkingTableRelation, checkingTableRelationIndex) => {
+                  // another one iteration through relation keys
                   Object.keys(checkingTableRelation).forEach(checkingKey => {
+                    // duplicates check
                     if (
                       currentTableRelation[constants.MANY_TO_MANY] &&
                       currentTableRelationIndex !==
@@ -262,6 +271,7 @@ class PostgresDBParser {
                         currentTableRelation[constants.MANY_TO_MANY].through
                           .table
                     ) {
+                      // pushing redudant relations
                       listOfIndexesOfRedudantRelations.push(
                         checkingTableRelationIndex
                       );
@@ -272,6 +282,8 @@ class PostgresDBParser {
             });
           }
         );
+        // excluding all redudant realations
+        // using reversed for loop beacuse indexes of rest element are changing after delete
         for (
           let index = listOfIndexesOfRedudantRelations.length - 1;
           index >= 0;
@@ -299,98 +311,28 @@ class PostgresDBParser {
 
   _tableParser(tableObj) {
     let result = {};
-    result.columns = tableObj.rows.map(item => {
-      item.data_type = fieldTypeNames[item.data_type]
-        ? fieldTypeNames[item.data_type]
-        : item.data_type;
-      return item;
+    result.columns = tableObj.rows.map(row => {
+      row.data_type = fieldTypeNames[row.data_type]
+        ? fieldTypeNames[row.data_type]
+        : row.data_type;
+      return row;
     });
-    result.constraints = tableObj.constraints.rows.map(item => {
-      let constraintType = constraintTypeNames[item.contype]
-        ? constraintTypeNames[item.contype]
-        : item.contype;
+    result.constraints = tableObj.constraints.rows.map(row => {
+      let constraintType = constraintTypeNames[row.contype]
+        ? constraintTypeNames[row.contype]
+        : row.contype;
       let resultItem = {
-        constarintName: item.conname,
+        constarintName: row.conname,
         constraintType
       };
-      if (item.conkey) {
-        let constraintedColumnIndex = item.conkey[0] - 1;
+      if (row.conkey) {
+        let constraintedColumnIndex = row.conkey[0] - 1;
         resultItem.constraintedColumn =
           result.columns[constraintedColumnIndex].column_name;
         result.columns[constraintedColumnIndex].constraint = constraintType;
       }
       return resultItem;
     });
-    return result;
-  }
-
-  async _getSchemaConfig({ schema }) {
-    let result = await this.knex.raw(`
-      SELECT
-      table_name as show_tables
-      FROM
-      information_schema.tables
-      WHERE
-      table_type = 'BASE TABLE'
-      AND
-      table_schema NOT IN ('pg_catalog', 'information_schema')
-      AND
-      table_schema = '${schema}'
-      ;
-    `);
-    return result;
-  }
-
-  async _getRelationships() {
-    let result = {};
-    result = await this.knex.raw(`
-      select kcu.table_name as foreign_table,
-                '>-' as rel,
-                rel_tco.table_name as primary_table,
-                string_agg(kcu.column_name, ', ') as fk_columns,
-                kcu.constraint_name
-      from information_schema.table_constraints tco
-      join information_schema.key_column_usage kcu
-                on tco.constraint_schema = kcu.constraint_schema
-                and tco.constraint_name = kcu.constraint_name
-      join information_schema.referential_constraints rco
-                on tco.constraint_schema = rco.constraint_schema
-                and tco.constraint_name = rco.constraint_name
-      join information_schema.table_constraints rel_tco
-                on rco.unique_constraint_schema = rel_tco.constraint_schema
-                and rco.unique_constraint_name = rel_tco.constraint_name
-      where tco.constraint_type = 'FOREIGN KEY'
-      and kcu.table_schema = '${this.schema}'
-      group by kcu.table_schema,
-                kcu.table_name,
-                rel_tco.table_name,
-                rel_tco.table_schema,
-                kcu.constraint_name
-      order by kcu.table_schema,
-                kcu.table_name;
-    `);
-    return result;
-  }
-
-  async _getConstraints({ table }) {
-    let result = await this.knex.raw(`
-    SELECT con.*
-    FROM pg_catalog.pg_constraint con
-          INNER JOIN pg_catalog.pg_class rel
-                    ON rel.oid = con.conrelid
-          INNER JOIN pg_catalog.pg_namespace nsp
-                    ON nsp.oid = connamespace
-    WHERE nsp.nspname = 'public'
-          AND rel.relname = '${table}';
-    `);
-    return result;
-  }
-
-  async _getTableConfig({ table }) {
-    let result = await this.knex.raw(`
-    select column_name, data_type, character_maximum_length
-    from INFORMATION_SCHEMA.COLUMNS where table_name ='${table}';
-  `);
     return result;
   }
 }

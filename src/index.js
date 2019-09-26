@@ -3,14 +3,18 @@ import PostgresDBParser from "./parsers/pg-parser";
 import fs from "fs";
 import util from "util";
 import * as constants from "./constants";
-import makeRepository from "./repository";
-import { generateConfig } from "./helpers/config-generator";
+import repositories from "./repositories";
+import { generateConfig } from "./helpers/config-writer";
 
 const readFileAsync = util.promisify(fs.readFile);
 
 function initializeApp({ knex, schema }) {
-  const repository = makeRepository({ knex });
-  const pgParser = new PostgresDBParser(knex, schema);
+  const repository = repositories.makeUniversalRepostitory({ knex });
+  const metaDataRepository = repositories.makeMetaDataRepository({ knex });
+  const pgParser = new PostgresDBParser({
+    schema,
+    repository: metaDataRepository
+  });
   // generateConfig({
   //   pgParser,
   //   pathToConfigDirectory: constants.CONFIG_FOLDER_PATH

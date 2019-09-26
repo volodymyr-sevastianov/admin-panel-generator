@@ -20,7 +20,9 @@ async function writeJSON(path = "config.json", data) {
     if (err) {
       throw err;
     }
-    console.log("WRITTEN!");
+    let pathArray = path.split("\\");
+    let fileName = pathArray[pathArray.length - 1];
+    console.log(fileName, "WRITTEN!");
   });
 }
 

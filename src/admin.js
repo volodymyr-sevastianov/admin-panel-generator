@@ -3,6 +3,7 @@ import path from "path";
 import express from "express";
 import ModelAdmin from "./model-admin";
 import { CONFIG_FOLDER_PATH } from "./constants";
+import errors from "./errors";
 
 class Admin {
   models = {};
@@ -40,11 +41,17 @@ class Admin {
     res.status(200).send(responseBody);
   };
 
-  getAllData = async (req, res) => {
+  getAllData = (req, res) => {
     let modelName = req.params.model;
-    let responseBody = await this.models[modelName].getAll();
-
-    res.status(200).send(responseBody);
+    this.models[modelName].getAll().then(
+      resolve => {
+        res.status(200).send(resolve);
+      },
+      err => {
+        res.status(400).send(err);
+        throw e;
+      }
+    );
   };
 
   post = async (req, res) => {
@@ -53,7 +60,7 @@ class Admin {
     try {
       await this.models[modelName].insert({ data });
     } catch (e) {
-      res.status(500).send(e);
+      res.status(400).send({ error: e });
       throw e;
     }
     res.status(200).send("SUCCESS");
@@ -86,15 +93,33 @@ class Admin {
     return;
   };
 
+  validateRequest = (req, res, next) => {
+    let modelName = req.params.model;
+    if (!this.models[modelName]) {
+      let error = new errors.ModelDoesNotExistError({
+        modelName,
+        code: errors.ERROR_CODES.MODEL_DOES_NOT_EXIST
+      });
+      res.status(404).send({
+        error: {
+          message: error.message,
+          code: error.code
+        }
+      });
+      return;
+    }
+    next();
+  };
+
   getRoutes() {
     let router = express.Router();
 
-    router.get("/config", this.getConfig);
-    router.get("/config/:model", this.getModelConfig);
-    router.get("/:model", this.getAllData);
-    router.post("/:model", this.post);
-    router.put("/:model", this.put);
-    router.delete("/:model", this.delete);
+    router.get("/config", this.validateRequest, this.getConfig);
+    router.get("/config/:model", this.validateRequest, this.getModelConfig);
+    router.get("/:model", this.validateRequest, this.getAllData);
+    router.post("/:model", this.validateRequest, this.post);
+    router.put("/:model", this.validateRequest, this.put);
+    router.delete("/:model", this.validateRequest, this.delete);
     return router;
   }
 }
