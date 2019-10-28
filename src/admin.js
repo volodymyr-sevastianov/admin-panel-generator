@@ -27,13 +27,10 @@ class Admin {
     res.status(200).send(this.models);
   };
 
-  getModelConfig = (req, res) => {
+  getModelConfig = (req, res, next) => {
     let modelName = req.params.model;
-    if (!this.models[modelName]) {
-      res
-        .status(404)
-        .send(new Error(`Config for model ${modelName} does not exist.`));
-      return;
+    if (!modelName) {
+      next();
     }
     let responseBody = {
       [modelName]: this.models[modelName]
@@ -95,6 +92,9 @@ class Admin {
 
   validateRequest = (req, res, next) => {
     let modelName = req.params.model;
+    if (!modelName) {
+      next();
+    }
     if (!this.models[modelName]) {
       let error = new errors.ModelDoesNotExistError({
         modelName,
@@ -114,7 +114,7 @@ class Admin {
   getRoutes() {
     let router = express.Router();
 
-    router.get("/config", this.validateRequest, this.getConfig);
+    router.get("/config", this.getConfig);
     router.get("/config/:model", this.validateRequest, this.getModelConfig);
     router.get("/:model", this.validateRequest, this.getAllData);
     router.post("/:model", this.validateRequest, this.post);

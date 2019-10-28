@@ -21,7 +21,6 @@ class PostgresDBParser {
   constructor({ schema, repository }) {
     this.schema = schema;
     this.repository = repository;
-    console.log(repository);
   }
 
   countOccurrences(arr, val) {
