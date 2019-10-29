@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "knex": "^0.19.4",
     "nodemon": "^1.19.2",
@@ -11,7 +12,8 @@
     "migrate:rollback": "knex --knexfile=./knexfile.js migrate:rollback",
     "seed:make": "knex --knexfile=./knexfile.js seed:make",
     "seed:run": "knex --knexfile=./knexfile.js seed:run",
-    "dev": "nodemon --ignore src/configs/ --inspect --exec babel-node ./app.js"
+    "dev": "nodemon --ignore lib/configs/ --inspect --exec babel-node ./app.js",
+    "generate": "babel-node ./lib/scripts/generate-config.js"
   },
   "devDependencies": {
     "@babel/cli": "^7.6.0",
@@ -21,6 +23,7 @@
     "@babel/preset-env": "^7.6.0",
     "babel-node": "^0.0.1-security",
     "babel-plugin-transform-class-properties": "^6.24.1",
+    "command-line-args": "^5.1.1",
     "nodemon": "^1.19.2"
   }
 }

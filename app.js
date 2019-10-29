@@ -1,12 +1,15 @@
 import express from "express";
 import Knex from "knex";
 import config from "./knexfile";
-import initializeApp from "./src";
+import { initializeApp } from "./lib";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 const knex = Knex(config);
 
-const admin = initializeApp({ knex, schema: "public" });
+const admin = initializeApp();
 admin.register("cars");
 admin.register("makes");
 

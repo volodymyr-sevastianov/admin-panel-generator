@@ -1,10 +1,10 @@
 {
   "tables": [
     "users",
-    "makes",
-    "cars",
     "users-items",
-    "items"
+    "items",
+    "makes",
+    "cars"
   ],
   "users": {
     "columns": {
@@ -110,52 +110,6 @@
       }
     }
   },
-  "makes": {
-    "columns": {
-      "id": {
-        "type": "integer",
-        "maxLength": null,
-        "constraint": "primary key"
-      },
-      "name": {
-        "type": "string",
-        "maxLength": 255,
-        "constraint": null
-      }
-    },
-    "relationMappings": {
-      "id": {
-        "relation": "hasMany",
-        "join": {
-          "from": "id",
-          "to": "cars.make-id"
-        }
-      }
-    }
-  },
-  "cars": {
-    "columns": {
-      "id": {
-        "type": "integer",
-        "maxLength": null,
-        "constraint": "primary key"
-      },
-      "make-id": {
-        "type": "integer",
-        "maxLength": null,
-        "constraint": "foreign key"
-      }
-    },
-    "relationMappings": {
-      "make-id": {
-        "relation": "belongsToMany",
-        "join": {
-          "from": "make-id",
-          "to": "makes.id"
-        }
-      }
-    }
-  },
   "users-items": {
     "columns": {
       "id": {
@@ -176,14 +130,14 @@
     },
     "relationMappings": {
       "item-id": {
-        "relation": "belongsToMany",
+        "relation": "oneToMany",
         "join": {
           "from": "item-id",
           "to": "items.id"
         }
       },
       "user-id": {
-        "relation": "belongsToMany",
+        "relation": "oneToMany",
         "join": {
           "from": "user-id",
           "to": "users.id"
@@ -221,6 +175,44 @@
           },
           "to": "users.id",
           "toTable": "users"
+        }
+      }
+    }
+  },
+  "makes": {
+    "columns": {
+      "id": {
+        "type": "integer",
+        "maxLength": null,
+        "constraint": "primary key"
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": null
+      }
+    },
+    "relationMappings": {}
+  },
+  "cars": {
+    "columns": {
+      "id": {
+        "type": "integer",
+        "maxLength": null,
+        "constraint": "primary key"
+      },
+      "make-id": {
+        "type": "integer",
+        "maxLength": null,
+        "constraint": "foreign key"
+      }
+    },
+    "relationMappings": {
+      "make-id": {
+        "relation": "oneToMany",
+        "join": {
+          "from": "make-id",
+          "to": "makes.id"
         }
       }
     }
