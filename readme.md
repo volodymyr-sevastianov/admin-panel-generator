@@ -54,8 +54,13 @@ app.use("/apiRoute", admin.getRoutes());
 And that's all, run your server and try any of crud operations throught this routes:
 
 GET /apiRoute/config - to get full db config;
+
 GET /apiRoute/config/:tableName - to get config of specified table;
+
 GET /apiRoute/:tableName - to get all data from specified table;
+
 POST /apiRoute/:tableName - to post specified row to specified table;
+
 PUT /apiRoute/:tableName - to update specified row in specified table;
+
 DELETE /apiRoute/:tableName/:id - to delete row from specified table;
