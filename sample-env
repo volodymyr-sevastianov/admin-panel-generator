@@ -1,0 +1,11 @@
+PORT=3000
+
+DB_CONNECTION_STRING=postgres://postgres:develop@localhost:5432/admin-panel-parser
+DB_SCHEMA_NAME=public
+DB_MIGRATIONS_DIRECTORY=./migrations/
+DB_SEEDS_DIRECTORY=./seeds/
+DB_DEBUG=true
+
+KNEX_FILE_PATH=C:/Users/5/Desktop/NodeJs/admin-panel-generator/knexfile.js
+
+CONFIG_FOLDER_PATH=C:/Users/5/Desktop/NodeJs/admin-panel-generator/lib/configs
