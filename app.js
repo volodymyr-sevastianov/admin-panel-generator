@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 const knex = Knex(config);
 
-const admin = initializeApp();
+const admin = initializeApp({ path: "./shit" });
 admin.register("cars");
 admin.register("makes");
 
