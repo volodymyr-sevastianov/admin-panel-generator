@@ -1,0 +1,39 @@
+{
+  "columns": {
+    "id": {
+      "type": "string",
+      "maxLength": 255,
+      "constraint": "primary key"
+    },
+    "firstName": {
+      "type": "string",
+      "maxLength": 255,
+      "constraint": null
+    },
+    "lastName": {
+      "type": "string",
+      "maxLength": 255,
+      "constraint": null
+    },
+    "dob": {
+      "type": "date",
+      "maxLength": null,
+      "constraint": null
+    }
+  },
+  "relationMappings": {
+    "projects": {
+      "relation": "manyToMany",
+      "join": {
+        "from": "users.id",
+        "through": {
+          "table": "userProject",
+          "from": "userProject.userId",
+          "to": "userProject.projectId"
+        },
+        "to": "projects.id",
+        "toTable": "projects"
+      }
+    }
+  }
+}
