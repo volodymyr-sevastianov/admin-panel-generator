@@ -1,0 +1,132 @@
+{
+  "tables": [
+    "users",
+    "projects",
+    "userProject"
+  ],
+  "users": {
+    "columns": {
+      "id": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": "primary key"
+      },
+      "firstName": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": null
+      },
+      "lastName": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": null
+      },
+      "dob": {
+        "type": "date",
+        "maxLength": null,
+        "constraint": null
+      }
+    },
+    "relationMappings": {
+      "projects": {
+        "relation": "manyToMany",
+        "join": {
+          "from": "users.id",
+          "through": {
+            "table": "userProject",
+            "from": "userProject.userId",
+            "to": "userProject.projectId"
+          },
+          "to": "projects.id",
+          "toTable": "projects"
+        }
+      }
+    }
+  },
+  "projects": {
+    "columns": {
+      "id": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": "primary key"
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": null
+      },
+      "description": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": null
+      },
+      "creationDate": {
+        "type": "date",
+        "maxLength": null,
+        "constraint": null
+      },
+      "ownerId": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": "foreign key"
+      }
+    },
+    "relationMappings": {
+      "ownerId": {
+        "relation": "oneToMany",
+        "join": {
+          "from": "ownerId",
+          "to": "users.id"
+        }
+      },
+      "users": {
+        "relation": "manyToMany",
+        "join": {
+          "from": "projects.id",
+          "through": {
+            "table": "userProject",
+            "from": "userProject.projectId",
+            "to": "userProject.userId"
+          },
+          "to": "users.id",
+          "toTable": "users"
+        }
+      }
+    }
+  },
+  "userProject": {
+    "columns": {
+      "id": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": "primary key"
+      },
+      "userId": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": "foreign key"
+      },
+      "projectId": {
+        "type": "string",
+        "maxLength": 255,
+        "constraint": "foreign key"
+      }
+    },
+    "relationMappings": {
+      "projectId": {
+        "relation": "oneToMany",
+        "join": {
+          "from": "projectId",
+          "to": "projects.id"
+        }
+      },
+      "userId": {
+        "relation": "oneToMany",
+        "join": {
+          "from": "userId",
+          "to": "users.id"
+        }
+      }
+    }
+  }
+}
