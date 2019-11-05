@@ -1,7 +1,7 @@
 import express from "express";
 import Knex from "knex";
 import config from "./knexfile";
-import { initializeApp } from "./lib";
+import admin from "./tracker-admin";
 import dotenv from "dotenv";
 // import example from "./example";
 
@@ -9,10 +9,6 @@ dotenv.config();
 
 const app = express();
 const knex = Knex(config);
-
-const admin = initializeApp({ path: "" });
-// admin.register("cars");
-// admin.register("makes");
 
 app.use(express.json());
 // app.use((req, res, next) => {

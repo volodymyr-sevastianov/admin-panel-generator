@@ -9,9 +9,7 @@ DB_MIGRATIONS_DIRECTORY
 DB_SEEDS_DIRECTORY
 DB_DEBUG
 
-KNEX_FILE_PATH
-
-CONFIG_FOLDER_PATH
+KNEX_FILE_CONVENTION_NAME - it's how you name your knexfiles in your project
 ```
 
 Also you can use our sample_env file.
@@ -21,13 +19,13 @@ Also you can use our sample_env file.
 To generate DB configuration use yarn command:
 
 ```bash
-yarn generate
+yarn generate --path <path to folder where needed knexfile located>
 ```
 
 or NPM:
 
 ```bash
-npm run generate
+npm run generate --path <path to folder where needed knexfile located>
 ```
 
 Then import initializeApp() from lib/ :
@@ -35,7 +33,9 @@ Then import initializeApp() from lib/ :
 ```javascript
 import { initializeApp } from "./lib";
 
-const admin = initializeApp();
+const admin = initializeApp({
+  path: "path to needed DB knexfile configuration folder"
+});
 ```
 
 To register models in your admin panel use admin.register(). Name of registering table must be equal to the table name in DB.
