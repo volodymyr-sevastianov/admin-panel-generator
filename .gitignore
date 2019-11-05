@@ -1,8 +1,2 @@
 node_modules
-config
-
 .env
-
-dbconfig.json
-dev-config.json
-lib/configs
