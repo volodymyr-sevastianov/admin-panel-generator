@@ -6,4 +6,6 @@ export { default as DateTimeField } from "./DateTimeField";
 export { default as NumberField } from "./NumberField";
 export { default as EmailField } from "./EmailField";
 export { default as UUIDField } from "./UUIDField";
+export { default as ForeignKey } from "./ForeignKey";
+export { default as ManyToManyField } from "./ManyToManyField";
 export { Validator, ValidationError } from "./formats";
