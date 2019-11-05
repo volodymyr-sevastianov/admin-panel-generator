@@ -23,9 +23,11 @@ function modelExtend(args) {
     })
   );
   const fieldsEntries = Object.entries(fields);
-  const jsonSchema = Object.freeze(createSchemaFromFields(fieldsEntries));
+  const primaryField = fieldsEntries.find(([n, f]) => f.isPrimary());
+  const jsonSchema = createSchemaFromFields(fieldsEntries);
+  Object.freeze(jsonSchema);
 
-  return function(args) {
+  function Model(args) {
     const values = {};
 
     Object.entries(args).forEach(([n, v]) => {
@@ -64,7 +66,25 @@ function modelExtend(args) {
         return target[name];
       }
     });
+  }
+
+  Model.getJsonSchema = function(...fields) {
+    console.log(fields);
+    if (fields.length) {
+      return createSchemaFromFields(
+        fieldsEntries.filter(([n]) => fields.includes(n))
+      );
+    }
+    return jsonSchema;
   };
+
+  Model.getPrimaryField = function() {
+    return primaryField ? primaryField[1] : undefined;
+  };
+
+  Model.fromJS = function(args) {};
+
+  return Model;
 }
 
 export default modelExtend;
