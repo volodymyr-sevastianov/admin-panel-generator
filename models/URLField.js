@@ -1,8 +1,9 @@
 import Field from "./Field";
 import { inherit } from "./utils";
 
-const URLField = function(args) {
-  Field.call(this, args);
+const URLField = function({ jsonSchema: schema, ...args }) {
+  const jsonSchema = schema || { type: "string", format: "uri" };
+  Field.call(this, { ...args, jsonSchema });
 };
 
 inherit(URLField, Field);

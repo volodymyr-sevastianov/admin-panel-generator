@@ -1,6 +1,15 @@
 import Field from "./Field";
-import FieldError from "./FieldErrors";
+import FieldsErrors from "./FieldsErrors";
 import { fromEntries } from "./utils";
+
+function createSchemaFromFields(fields) {
+  const properties = fields.map(([n, f]) => [n, f.getJsonSchema()]);
+  return {
+    $schema: "http://json-schema.org/draft-04/schema#",
+    type: "object",
+    properties: fromEntries(properties)
+  };
+}
 
 function modelExtend(args) {
   const properties = Object.entries(args);
@@ -13,6 +22,8 @@ function modelExtend(args) {
       return isField;
     })
   );
+  const fieldsEntries = Object.entries(fields);
+  const jsonSchema = Object.freeze(createSchemaFromFields(fieldsEntries));
 
   return function(args) {
     const values = {};
@@ -25,7 +36,7 @@ function modelExtend(args) {
 
     this.clean_fields = function() {
       const errors = {};
-      Object.entries(fields).forEach(([n, f]) => {
+      fieldsEntries.forEach(([n, f]) => {
         try {
           values[n] = f.clean(values[n]);
         } catch (e) {
@@ -33,8 +44,16 @@ function modelExtend(args) {
         }
       });
       if (Object.keys(errors).length) {
-        throw new FieldError(errors);
+        throw new FieldsErrors(errors);
       }
+    };
+
+    this.toJS = function() {
+      return { ...values };
+    };
+
+    this.getJsonSchema = function() {
+      return jsonSchema;
     };
 
     return new Proxy(this, {
