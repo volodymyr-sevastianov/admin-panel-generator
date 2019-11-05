@@ -11,7 +11,8 @@ class ForeignKey extends Field {
     }
     super({
       ...args,
-      jsonSchema: { ...pf.getJsonSchema(), relatedModel: to.constructor.name }
+      hasRelated: true,
+      jsonSchema: { ...pf.getJsonSchema(), relatedModel: to.getName() }
     });
     this._relatedScheme = to.getJsonSchema();
   }
