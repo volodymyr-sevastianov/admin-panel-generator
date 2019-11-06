@@ -17,7 +17,8 @@ class Field {
     minLength,
     maxLength,
     pattern,
-    jsonSchema: schema
+    jsonSchema: schema,
+    hasRelated
   }) {
     this.primary = !!primary;
     this.defaultValue = defaultValue;
@@ -27,14 +28,17 @@ class Field {
     this.pattern = pattern;
     this._name = null;
     this._schema = schema || { type: "string" };
+    this._hasRelated = !!hasRelated;
 
-    if (this._schema.type !== "object") {
+    if (this._hasRelated) {
+      this._schema.hasRelated = true;
+    } else {
       this._extendSchema();
     }
     Object.freeze(this._schema);
   }
 
-  _extendSchema = function() {
+  _extendSchema() {
     if (this.required) {
       this._schema.required = true;
     }
@@ -47,23 +51,23 @@ class Field {
     if (this.pattern) {
       this._schema.pattern = this.pattern;
     }
-  };
+  }
 
-  _setName = function(n) {
+  _setName(n) {
     this._name = n;
-  };
+  }
 
-  isPrimary = function() {
+  isPrimary() {
     return this.primary;
-  };
+  }
 
-  clean = function(v) {
+  clean(v) {
     const value = isEmpty(v) ? this.defaultValue : v;
     this.validate(value);
     return value;
-  };
+  }
 
-  validate = function(value) {
+  validate(value) {
     var v = new Validator();
     const result = v.validate(value, this._schema, {
       propertyName: this._name
@@ -71,7 +75,8 @@ class Field {
     if (!result.valid) {
       throw new FieldErrors(result.errors);
     }
-    if (this._schema.type === "string" && (isEmpty(value) || value === "")) {
+    // if (this._schema.type === "string" && (isEmpty(value) || value === "")) {
+    if (this.required && (isEmpty(value) || value === "")) {
       throw new FieldErrors([
         new ValidationError(
           "is required",
@@ -82,11 +87,11 @@ class Field {
         )
       ]);
     }
-  };
+  }
 
-  getJsonSchema = function() {
+  getJsonSchema() {
     return { ...this._schema };
-  };
+  }
 }
 
 const FieldOld = function({

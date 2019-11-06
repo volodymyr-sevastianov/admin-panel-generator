@@ -3,15 +3,22 @@ import FieldsErrors from "./FieldsErrors";
 import { fromEntries } from "./utils";
 
 function createSchemaFromFields(fields) {
-  const properties = fields.map(([n, f]) => [n, f.getJsonSchema()]);
+  const required = [];
+  const properties = fields.map(([n, f]) => {
+    if (f.required) {
+      required.push(n);
+    }
+    return [n, f.getJsonSchema()];
+  });
   return {
     $schema: "http://json-schema.org/draft-04/schema#",
     type: "object",
-    properties: fromEntries(properties)
+    properties: fromEntries(properties),
+    required
   };
 }
 
-function modelExtend(args) {
+function modelExtend(modelName, args) {
   const properties = Object.entries(args);
   const fields = fromEntries(
     properties.filter(([n, v]) => {
@@ -63,6 +70,9 @@ function modelExtend(args) {
         if (name in fields) {
           return values[name];
         }
+        if (name === "getName") {
+          return modelName;
+        }
         return target[name];
       }
     });
@@ -82,7 +92,9 @@ function modelExtend(args) {
     return primaryField ? primaryField[1] : undefined;
   };
 
-  Model.fromJS = function(args) {};
+  Model.getName = function() {
+    return modelName;
+  };
 
   return Model;
 }
