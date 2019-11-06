@@ -1,7 +1,11 @@
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
 
 class ModelAdmin {
+  private repository: any;
+  modelName: string;
+  model: JSON;
+
   constructor({ configFileName, repository, configFolderPath }) {
     this.repository = repository;
     let configFilePath = path.resolve(
@@ -9,7 +13,7 @@ class ModelAdmin {
       configFileName + ".json"
     );
     this.modelName = configFileName;
-    this.model = JSON.parse(fs.readFileSync(configFilePath));
+    this.model = JSON.parse(fs.readFileSync(configFilePath).toString());
   }
 
   getAll() {
@@ -23,6 +27,7 @@ class ModelAdmin {
   update({ data }) {
     return this.repository.update({ data, tableName: this.modelName });
   }
+
   delete({ id }) {
     return this.repository.del({ id, tableName: this.modelName });
   }
