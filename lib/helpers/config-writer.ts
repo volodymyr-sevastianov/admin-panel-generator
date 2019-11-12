@@ -1,5 +1,6 @@
-import Path from "path";
-import fs from "fs";
+import * as Path from "path";
+import * as fs from "fs";
+import IParcer from "../intrefaces/IParcer";
 
 function resolveConfigsFolder({ path }) {
   const pathToDirectory = Path.resolve(path, "configs");
@@ -9,9 +10,15 @@ function resolveConfigsFolder({ path }) {
   return pathToDirectory;
 }
 
-async function generateConfig({ pgParser, pathToConfigDirectory }) {
-  let config = await pgParser.getDBConfig();
-  let publicConfig = pgParser.getPublicConfig(config);
+async function generateConfig({
+  parser,
+  pathToConfigDirectory
+}: {
+  parser: IParcer;
+  pathToConfigDirectory: any;
+}) {
+  let config = await parser.getDBConfig();
+  let publicConfig = parser.getPublicConfig(config);
   delete config.tables;
   Object.keys(config).forEach(tableName => {
     let pathToConfig = Path.resolve(

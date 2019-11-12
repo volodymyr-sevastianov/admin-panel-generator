@@ -68,7 +68,7 @@ class Field {
   }
 
   validate(value) {
-    var v = new Validator();
+    const v = new Validator();
     const result = v.validate(value, this._schema, {
       propertyName: this._name
     });
@@ -134,7 +134,7 @@ const FieldOld = function({
   };
 
   this.validate = function(value) {
-    var v = new Validator();
+    const v = new Validator();
     const result = v.validate(value, jsonSchema, { propertyName: name });
     if (!result.valid) {
       throw new FieldErrors(result.errors);

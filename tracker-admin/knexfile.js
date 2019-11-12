@@ -11,6 +11,6 @@ module.exports = (function() {
     migrations: {
       directory: process.env.DB_MIGRATIONS_DIRECTORY
     },
-    debug: process.env.DB_DEBUG
+    debug: false
   };
 })();

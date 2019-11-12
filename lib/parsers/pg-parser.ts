@@ -1,4 +1,5 @@
 import * as constants from "../constants";
+import IParcer from "../intrefaces/IParcer";
 
 const fieldTypeNames = {
   bytea: "byte array",
@@ -17,13 +18,15 @@ const constraintTypeNames = {
   x: "exclusion"
 };
 
-class PostgresDBParser {
+class PostgresDBParser implements IParcer {
+  schema: any;
+  repository: any;
   constructor({ schema, repository }) {
     this.schema = schema;
     this.repository = repository;
   }
 
-  countOccurrences(arr, val) {
+  private countOccurrences(arr, val) {
     let accumulator = 0;
     arr.forEach(item => {
       Object.keys(item).forEach(value => {
@@ -37,7 +40,7 @@ class PostgresDBParser {
     // get meta-data from DB
     let config = await this.repository.getSchemaConfig({ schema: this.schema });
     // parse meta-data to necessary shape
-    config = this._schemaParser(config);
+    config = this.schemaParser(config);
     let tableConfig;
     for (let index = 0; index < config.tables.length; index++) {
       const tableName = config.tables[index];
@@ -48,20 +51,20 @@ class PostgresDBParser {
         table: tableName
       });
       // parse table and attach it to config
-      config[tableName] = this._tableParser(tableConfig);
+      config[tableName] = this.tableParser(tableConfig);
     }
     // get relationship data from DB
     let relations = await this.repository.getRelationships({
       schema: this.schema
     });
     // attach relationship data
-    config = this._attachRelations({ config, relations });
+    config = this.attachRelations({ config, relations });
 
     return config;
   };
 
   getPublicConfig(config) {
-    let publicConfig = {};
+    let publicConfig: any = {};
     // iterate through tables
     Object.keys(config).forEach(tableName => {
       let currentTable = config[tableName];
@@ -85,8 +88,8 @@ class PostgresDBParser {
         // iterate through relations of current table
         currentTableRelations.forEach(relation => {
           // getting the current relation type
-          let relationType = Object.keys(relation)[0];
-          let joinName = relation.from;
+          const relationType = Object.keys(relation)[0];
+          const joinName = relation.from;
           // chosing the form of result object in dependency to relation type
           if (relationType === constants.MANY_TO_MANY) {
             join = relation[relationType];
@@ -97,7 +100,8 @@ class PostgresDBParser {
           } else {
             join = {
               from: relation.from,
-              to: relation.to
+              to: relation.to,
+              toTable: relation.toTable
             };
             relationMappings[joinName] = {
               relation: relationType,
@@ -135,7 +139,7 @@ class PostgresDBParser {
     return publicConfig;
   }
 
-  _attachRelations({ config, relations }) {
+  private attachRelations({ config, relations }) {
     Object.keys(config).forEach(key => {
       // ignoring 'tables'
       if (key !== "tables") {
@@ -152,16 +156,6 @@ class PostgresDBParser {
       let foreignKeyColumn = item.fk_columns;
       let relationObj = {};
       // changing the relation obj to the right shape
-
-      //-- TODO: Create check for dev-config options
-      // to know should we show "hasMany" relations or not
-      // let relationObj = {
-      //   hasMany: foreignTableName,
-      //   from: primaryTablePKName,
-      //   to: foreignTableName + "." + foreignKeyColumn
-      // };
-      // // pushing relation obj to the foreign key target table
-      // config[primaryTableName].relations.push(relationObj);
 
       let isForeignKeyUnique = false;
       // iterating through a columns of a table that have foreign key
@@ -181,36 +175,40 @@ class PostgresDBParser {
       relationObj = {
         [relationKey]: primaryTableName,
         from: foreignKeyColumn,
-        to: primaryTableName + "." + primaryTablePKName
+        to: primaryTableName + "." + primaryTablePKName,
+        toTable: primaryTableName
       };
       config[foreignTableName].relations.push(relationObj);
     });
 
-    config = this._resolveManyToMany({ config });
+    config = this.resolveManyToMany({ config });
 
     return config;
   }
 
-  _resolveManyToMany({ config }) {
+  private resolveManyToMany({ config }) {
     // iterate through tables
     Object.keys(config).forEach(tableName => {
       const belongsToManyKey = constants.ONE_TO_MANY;
       // excluding tables
       if (tableName !== "tables") {
-        let currentTable = config[tableName];
-        let currentTableRelations = currentTable.relations;
+        const currentTable = config[tableName];
+        const currentTableRelations = currentTable.relations;
         // count belongs to many relations to decide is there many to many or not
-        let countOfBelongsToManyRelations =
+        const countOfBelongsToManyRelations =
           Object.keys(currentTable.relations).length > 1
             ? this.countOccurrences(currentTable.relations, belongsToManyKey)
             : 0;
+        const columnsCount = Object.keys(currentTable.columns).length;
+        // const columnsCount = 3;
+
         // if there is many to many then ...
-        if (countOfBelongsToManyRelations === 2) {
+        if (countOfBelongsToManyRelations === 2 && columnsCount === 3) {
           // iterate through current table relations
           currentTableRelations.forEach((currentTableRelation, index) => {
             let primaryTableName = currentTableRelation[belongsToManyKey];
             // this is made for switching beetween data from two relations in one time.
-            // For example, to set users many to many relation and instantly items MTM relation
+            // For example, to set users many to many relation(MTM) and instantly items MTM relation
             let otherRelationIndex = index === 0 ? index + 1 : index - 1;
             let [manyToManyRelatedTable] = currentTableRelations[
               otherRelationIndex
@@ -238,14 +236,14 @@ class PostgresDBParser {
         }
       }
     });
-    config = this._resolveRelationsDuplicates(config);
+    config = this.resolveRelationsDuplicates(config);
 
     return config;
   }
 
   // this method is made for deleting relations to the same tables.
   // Those relations may be created by _resolveManyToMany() method
-  _resolveRelationsDuplicates(config) {
+  private resolveRelationsDuplicates(config) {
     // iterating through tables
     Object.keys(config).forEach(tableName => {
       if (tableName !== "tables") {
@@ -297,7 +295,7 @@ class PostgresDBParser {
     return config;
   }
 
-  _schemaParser(schemaObj) {
+  private schemaParser(schemaObj) {
     let result = { tables: [] };
     schemaObj.rows.forEach(item => {
       // excluding redudant tables
@@ -308,8 +306,8 @@ class PostgresDBParser {
     return result;
   }
 
-  _tableParser(tableObj) {
-    let result = {};
+  private tableParser(tableObj) {
+    let result: any = {};
     result.columns = tableObj.rows.map(row => {
       row.data_type = fieldTypeNames[row.data_type]
         ? fieldTypeNames[row.data_type]
@@ -322,7 +320,8 @@ class PostgresDBParser {
         : row.contype;
       let resultItem = {
         constarintName: row.conname,
-        constraintType
+        constraintType,
+        constraintedColumn: null
       };
       if (row.conkey) {
         let constraintedColumnIndex = row.conkey[0] - 1;
