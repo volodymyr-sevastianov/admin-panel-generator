@@ -1,19 +1,23 @@
 import * as fs from "fs";
 import * as path from "path";
+import { createModel } from "./helpers/create-model";
 
 class ModelAdmin {
   private repository: any;
   modelName: string;
-  model: JSON;
+  model: any;
 
-  constructor({ configFileName, repository, configFolderPath }) {
+  constructor({ configFileName, repository, configFolderPath, customModel }) {
     this.repository = repository;
     let configFilePath = path.resolve(
       configFolderPath,
       configFileName + ".json"
     );
     this.modelName = configFileName;
-    this.model = JSON.parse(fs.readFileSync(configFilePath).toString());
+    const rawModel = JSON.parse(fs.readFileSync(configFilePath).toString());
+    this.model = customModel
+      ? customModel
+      : createModel({ rawModel, modelName: this.modelName });
   }
 
   getAll() {

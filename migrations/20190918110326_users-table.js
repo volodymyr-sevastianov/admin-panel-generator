@@ -1,7 +1,7 @@
 exports.up = function(knex) {
   return knex.schema.createTable("users", table => {
     table.increments("id");
-    table.integer("age");
+    table.integer("age").notNullable();
     table.bigInteger("sins-qty");
     table.text("biography");
     table.string("full-name");
