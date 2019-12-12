@@ -324,10 +324,14 @@ class PostgresDBParser implements IParcer {
         constraintedColumn: null
       };
       if (row.conkey) {
-        let constraintedColumnIndex = row.conkey[0] - 1;
-        resultItem.constraintedColumn =
-          result.columns[constraintedColumnIndex].column_name;
-        result.columns[constraintedColumnIndex].constraint = constraintType;
+        try {
+          let constraintedColumnIndex = row.conkey[0] - 1;
+          resultItem.constraintedColumn =
+            result.columns[constraintedColumnIndex].column_name;
+          result.columns[constraintedColumnIndex].constraint = constraintType;
+        } catch (e) {
+          console.log(row);
+        }
       }
       return resultItem;
     });

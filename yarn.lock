@@ -758,6 +758,13 @@
     pirates "^4.0.0"
     source-map-support "^0.5.9"
 
+"@babel/runtime@^7.7.6":
+  version "7.7.6"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.7.6.tgz#d18c511121aff1b4f2cd1d452f1bac9601dd830f"
+  integrity sha512-BWAJxpNVa0QlE5gZdWjSxXtemZyZ9RmrmVozxt3NUXeZhVIJ5ANyqmMc0JDrivBZyxUuQvFxlvH4OWWOogGfUw==
+  dependencies:
+    regenerator-runtime "^0.13.2"
+
 "@babel/template@^7.1.0", "@babel/template@^7.4.4", "@babel/template@^7.6.0":
   version "7.6.0"
   resolved "https://registry.yarnpkg.com/@babel/template/-/template-7.6.0.tgz#7f0159c7f5012230dad64cca42ec9bdb5c9536e6"
@@ -828,6 +835,13 @@
   version "12.12.5"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-12.12.5.tgz#66103d2eddc543d44a04394abb7be52506d7f290"
   integrity sha512-KEjODidV4XYUlJBF3XdjSH5FWoMCtO0utnhtdLf1AgeuZLOrRbvmU/gaRCVg7ZaQDjVf3l84egiY0mRNe5xE4A==
+
+"@vbait/json-schema-model@0.0.6":
+  version "0.0.6"
+  resolved "https://registry.yarnpkg.com/@vbait/json-schema-model/-/json-schema-model-0.0.6.tgz#adc6c8a6359e5fe56faddbbfc209c78ba985820c"
+  integrity sha512-dic9dqCM9U9xhj94Ttt8kYfXnrPdor5d2a34qkdaOJ2xWTL4LE2qObHuCt6HUNAsYtqloU+DCMpXJ/bUrmmDTQ==
+  dependencies:
+    validator "^12.1.0"
 
 abbrev@1:
   version "1.1.1"
@@ -4011,6 +4025,11 @@ validate-npm-package-license@^3.0.1:
   dependencies:
     spdx-correct "^3.0.0"
     spdx-expression-parse "^3.0.0"
+
+validator@^12.1.0:
+  version "12.1.0"
+  resolved "https://registry.yarnpkg.com/validator/-/validator-12.1.0.tgz#a3a7315d5238cbc15e46ad8d5e479aafa7119925"
+  integrity sha512-gIC2RBuFRi574Rb9vewGCJ7TCLxHXNx6EKthEgs+Iz0pYa9a9Te1VLG/bGLsAyGWrqR5FfR7tbFUI7FEF2LiGA==
 
 vary@~1.1.2:
   version "1.1.2"
