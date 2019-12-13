@@ -1,5 +1,4 @@
 node_modules
 .env
 build
-/tracker-admin/configs
-/companies-admin
+/companies-admin/configs
