@@ -4,6 +4,7 @@ import { createModel, NumberField } from "@vbait/json-schema-model";
 
 class ModelAdmin {
   private repository: any;
+  private tableSource: any;
   tableName: string;
   modelName: string;
   model: any;
@@ -16,18 +17,31 @@ class ModelAdmin {
     section = { name: "models", path: "models" }
   }) {
     this.repository = repository;
-    let configFilePath = path.resolve(
-      configFolderPath,
-      configFileName + ".json"
-    );
     this.tableName = configFileName;
     this.section = section.path
       ? section
       : { ...section, path: section.name.toLowerCase().replace(" ", "-") };
+
+    try {
+      const configFilePath = path.resolve(
+        configFolderPath,
+        configFileName + ".json"
+      );
+      this.tableSource = JSON.parse(String(fs.readFileSync(configFilePath)));
+    } catch (e) {
+      throw new Error(
+        "You should run 'yarn generate' script to get all neccessary config files!"
+      );
+    }
   }
 
   getAll() {
     return this.repository.findAll({ tableName: this.tableName });
+  }
+
+  get(id) {
+    const result = this.repository.findOne({ tableName: this.tableName, id });
+    return result;
   }
 
   insert({ data }) {
@@ -75,7 +89,11 @@ class ModelAdmin {
     };
   }
 
-  getFullConfig() {}
+  getFullConfig() {
+    const model = this.getModel();
+    const config = { ...this.getConfig(), schema: model.getSchema() };
+    return config;
+  }
 }
 
 export default ModelAdmin;

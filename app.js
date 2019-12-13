@@ -1,7 +1,7 @@
 import express from "express";
 import Knex from "knex";
 import config from "./knexfile";
-import admin from "./tracker-admin";
+import admin from "./companies-admin";
 import dotenv from "dotenv";
 
 dotenv.config();
