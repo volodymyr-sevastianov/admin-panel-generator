@@ -1,5 +1,7 @@
+import { FieldsSelector } from "@vbait/json-schema-model";
+
 export interface IAppItemConfig {
-  modelAdmin?: IModelAdminConstructor;
+  // modelAdmin?: IModelAdminConstructor;
   section: [string, string];
 }
 
@@ -15,19 +17,27 @@ export interface IModelAdminFullConfig extends IModelAdminConfig {
 
 export interface ICreateApp {
   addTable(tableName: string, config: IAppItemConfig): void;
+  addModel(
+    modelAdminConstructor: IModelAdminConstructor,
+    tableName: string,
+    config: IAppItemConfig
+  ): void;
   getRoutes(): any;
   apiGetConfig(req: any, res: any): void;
 }
 
 export interface IModelAdminConstructor {
-  new (tableName: string): IModelAdmin;
+  new (sourcePath: string, tableName: string): IModelAdmin;
 }
 
 export interface IModelAdmin {
-  // public static createModel(): void;
+  model: any;
   addRepository(repository: any): void;
   getConfig(): IModelAdminConfig;
   getFullConfig(): {};
+  getFieldsSelector(): FieldsSelector;
+  getListFieldsSelector(): FieldsSelector;
   getAll(): Promise<any[]>;
   get(id: string): Promise<any>;
+  getForField(id: string, field: string): Promise<any>;
 }

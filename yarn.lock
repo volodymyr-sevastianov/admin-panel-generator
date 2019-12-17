@@ -836,10 +836,10 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-12.12.5.tgz#66103d2eddc543d44a04394abb7be52506d7f290"
   integrity sha512-KEjODidV4XYUlJBF3XdjSH5FWoMCtO0utnhtdLf1AgeuZLOrRbvmU/gaRCVg7ZaQDjVf3l84egiY0mRNe5xE4A==
 
-"@vbait/json-schema-model@0.0.9":
-  version "0.0.9"
-  resolved "https://registry.yarnpkg.com/@vbait/json-schema-model/-/json-schema-model-0.0.9.tgz#4e6ea4a2a3502094148b53e4360f7145c64614e8"
-  integrity sha512-+ZUbJ4XMaRIBKhCbkruNIDf9TFCkhLw04u/gna+R/oflqzDBr2IlZjFn++Q54khhrkt+I1+5wZZ+DUILR8KgNA==
+"@vbait/json-schema-model@0.1.5":
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/@vbait/json-schema-model/-/json-schema-model-0.1.5.tgz#980ad79e468a95553aa4e8a7f87ac0e228d83fb4"
+  integrity sha512-tQACEE7bNSnppFtLU0waacHDDCdyi31/gajEaI1IRLEgoubH8RCrdh718zb73sp+0tMO7AO9O8tddv7C9sXwhQ==
   dependencies:
     validator "^12.1.0"
 

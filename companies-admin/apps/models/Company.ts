@@ -1,4 +1,3 @@
-import { ModelAdmin } from "../../lib/registration";
 import {
   createModel,
   NumberField,
@@ -7,10 +6,7 @@ import {
   ForeignKey,
   ManyToManyField
 } from "@vbait/json-schema-model";
-
-const User = createModel("User", null, {
-  id: new NumberField({ primary: true })
-});
+import User from "./User";
 
 const Company = createModel("Company", null, {
   id: new NumberField({ primary: true }),
@@ -31,9 +27,6 @@ const Company = createModel("Company", null, {
     }
   })
 });
+Company.dbTableName = "companies_companies";
 
-class CompanyAdmin extends ModelAdmin {
-  model = Company;
-}
-
-export default CompanyAdmin;
+export default Company;

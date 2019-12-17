@@ -6,7 +6,8 @@ import {
   ICreateApp,
   IAppItemConfig,
   IModelAdmin,
-  IModelAdminConfig
+  IModelAdminConfig,
+  IModelAdminConstructor
 } from "./interfaces";
 import ModelAdmin from "./ModelAdmin";
 import { ModelDoesNotExistError, ERROR_CODES } from "./errors";
@@ -42,18 +43,15 @@ class CreateApp implements ICreateApp {
     this.repository = createRepository(args.path);
   }
 
-  addTable(tableName: string, config: IAppItemConfig = defaultConfig) {
+  private updateConfig(
+    modelAdmin: IModelAdmin,
+    config: IAppItemConfig = defaultConfig
+  ) {
     const {
-      modelAdmin,
       section: [name, path]
     } = config;
 
-    const model = modelAdmin
-      ? new modelAdmin(tableName)
-      : ModelAdmin.create(this.path, tableName);
-    model.addRepository(this.repository);
-
-    const modelConfig = model.getConfig();
+    const modelConfig = modelAdmin.getConfig();
     if (this.sections[name]) {
       this.sections[name].models.push(modelConfig);
     } else {
@@ -63,7 +61,25 @@ class CreateApp implements ICreateApp {
         models: [modelConfig]
       };
     }
-    this.models[tableName] = model;
+  }
+
+  addTable(tableName: string, config: IAppItemConfig = defaultConfig) {
+    // const modelAdmin = ModelAdmin.create(this.path, tableName);
+    const modelAdmin = new ModelAdmin(this.path, tableName);
+    modelAdmin.addRepository(this.repository);
+    this.models[tableName] = modelAdmin;
+    this.updateConfig(modelAdmin, config);
+  }
+
+  addModel(
+    modelAdminConstructor: IModelAdminConstructor,
+    tableName: string,
+    config: IAppItemConfig = defaultConfig
+  ) {
+    const modelAdmin = new modelAdminConstructor(this.path, tableName);
+    modelAdmin.addRepository(this.repository);
+    this.models[tableName] = modelAdmin;
+    this.updateConfig(modelAdmin, config);
   }
 
   getRoutes() {
@@ -72,6 +88,11 @@ class CreateApp implements ICreateApp {
     router.get("/config/:model", this.apiModelValidate, this.apiGetModelConfig);
     router.get("/:model", this.apiModelValidate, this.apiGetAll);
     router.get("/:model/:id", this.apiModelValidate, this.apiGetDetail);
+    router.get(
+      "/:model/:id/:field",
+      this.apiModelValidate,
+      this.apiGetAllForField
+    );
     return router;
   }
 
@@ -92,12 +113,13 @@ class CreateApp implements ICreateApp {
   apiGetAll = (req, res) => {
     const modelName = req.params.model;
     const modelAdmin = this.models[modelName];
+    const schema = modelAdmin.getListFieldsSelector().getSchema();
     modelAdmin.getAll().then(
-      resolve => {
-        res.status(200).send({ data: resolve });
+      data => {
+        res.status(200).send({ data, schema });
       },
       err => {
-        res.status(400).send(err);
+        res.status(400).send(err.message);
       }
     );
   };
@@ -106,9 +128,25 @@ class CreateApp implements ICreateApp {
     const modelName = req.params.model;
     const id = req.params.id;
     const modelAdmin = this.models[modelName];
+    const schema = modelAdmin.getFieldsSelector().getSchema();
     modelAdmin.get(id).then(
-      resolve => {
-        res.status(200).send({ data: resolve });
+      data => {
+        res.status(200).send({ data, schema });
+      },
+      err => {
+        res.status(400).send(err.message);
+      }
+    );
+  };
+
+  apiGetAllForField = (req, res) => {
+    const modelName = req.params.model;
+    const id = req.params.id;
+    const field = req.params.field;
+    const modelAdmin = this.models[modelName];
+    modelAdmin.getForField(id, field).then(
+      data => {
+        res.status(200).send({ data });
       },
       err => {
         res.status(400).send(err);

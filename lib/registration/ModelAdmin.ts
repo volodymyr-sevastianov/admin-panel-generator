@@ -1,43 +1,58 @@
 import * as fs from "fs";
 import * as paths from "path";
+import { FieldsSelector } from "@vbait/json-schema-model";
 import { IModelAdmin } from "./interfaces";
 import createDynamicModel from "./createDynamicModel";
+import Query from "./Query";
+import parseTableConfig from "./parseTableConfig";
 
 class ModelAdmin implements IModelAdmin {
   private repository: any;
+  private sourcePath: string;
   private tableName: string;
+  private fieldsSelector: FieldsSelector;
+  private listFieldsSelector: FieldsSelector;
   model: any;
+  fields: string[] | FieldsSelector;
+  listFields: string[] | FieldsSelector;
 
-  static create(path: string, tableName: string) {
-    let tableConfig;
-    try {
-      const configFilePath = paths.resolve(path, `${tableName}.json`);
-      tableConfig = JSON.parse(String(fs.readFileSync(configFilePath)));
-    } catch (e) {
-      throw new Error(
-        "You should run 'yarn generate' script to get all neccessary config files!"
-      );
-    }
-    const self = new ModelAdmin(tableName);
-    self.model = createDynamicModel(tableName, tableConfig);
-    return self;
+  constructor(sourcePath: string, tableName: string) {
+    this.sourcePath = sourcePath;
+    this.tableName = tableName;
   }
 
-  constructor(tableName: string) {
-    this.tableName = tableName;
+  private getModel(): any {
+    if (this.model) {
+      if (!this.model._relationMappings && this.tableName) {
+        this.model._relationMappings = parseTableConfig(
+          this.sourcePath,
+          this.tableName
+        ).relationMappings;
+      }
+      return this.model;
+    }
+    if (!this.model && !this.tableName) {
+      throw Error(
+        "Provide your model in ModelAdmin class or table name configuration"
+      );
+    }
+    if (!this.model) {
+      const tableConfig = parseTableConfig(this.sourcePath, this.tableName);
+      this.model = createDynamicModel(this.tableName, tableConfig);
+      this.model._relationMappings = tableConfig.relationMappings;
+    }
+    return this.model;
   }
 
   addRepository(repository) {
     this.repository = repository;
-    if (!this.model) {
-      throw Error("Add Model to your ModelAdmin class");
-    }
   }
 
   getConfig() {
+    const model = this.getModel();
     return {
       tableName: this.tableName,
-      name: this.model.name,
+      name: model.name,
       path: this.getModelPath()
     };
   }
@@ -49,22 +64,65 @@ class ModelAdmin implements IModelAdmin {
     };
   }
 
+  getFieldsSelector() {
+    if (!this.fieldsSelector) {
+      this.fieldsSelector =
+        this.fields instanceof FieldsSelector
+          ? this.fields
+          : new FieldsSelector(this.model, this.fields);
+    }
+    return this.fieldsSelector;
+  }
+
+  getListFieldsSelector() {
+    if (!this.listFieldsSelector) {
+      this.listFieldsSelector =
+        this.listFields instanceof FieldsSelector
+          ? this.listFields
+          : new FieldsSelector(this.model, this.listFields);
+    }
+    return this.listFieldsSelector;
+  }
+
   getModelPath() {
     const path = this.model.name.replace(/[_,\s]+/g, "-").toLowerCase();
     return path;
   }
 
   getAll() {
-    const result = this.repository.findAll({ tableName: this.tableName });
-    return result;
+    const query = new Query(
+      this.tableName,
+      this.getListFieldsSelector(),
+      this.repository
+    );
+    return query.apply({ withPrefetch: true }).then(results => {
+      return results.map(result => {
+        return new this.model(result).toJSFull();
+      });
+    });
   }
 
   get(id) {
-    const result = this.repository.findOne({ tableName: this.tableName, id });
-    return result.then(data => {
-      const obj = new this.model(data);
-      return obj.toJS();
-    });
+    const pk = this.model.getPrimaryField();
+    const query = new Query(
+      this.tableName,
+      this.getFieldsSelector(),
+      this.repository
+    );
+    return query
+      .filter({ [pk.name]: id })
+      .apply({ withPrefetch: true })
+      .then(results => {
+        if (results.length) {
+          return new this.model(results[0]).toJS();
+        }
+        throw Error("Not found");
+      });
+  }
+
+  getForField(id, field) {
+    console.log(field, this.model.getFieldByName(field));
+    return Promise.resolve();
   }
 }
 
