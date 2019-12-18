@@ -139,6 +139,49 @@ class PostgresDBParser implements IParcer {
     return publicConfig;
   }
 
+  private schemaParser(schemaObj) {
+    let result = { tables: [] };
+    schemaObj.rows.forEach(item => {
+      // excluding redudant tables
+      if (!item.show_tables.match(/(knex_)/)) {
+        result.tables.push(item.show_tables);
+      }
+    });
+    return result;
+  }
+
+  private tableParser(tableObj) {
+    let result: any = {};
+    result.columns = tableObj.rows.map(row => {
+      row.data_type = fieldTypeNames[row.data_type]
+        ? fieldTypeNames[row.data_type]
+        : row.data_type;
+      return row;
+    });
+    result.constraints = tableObj.constraints.rows.map(row => {
+      let constraintType = constraintTypeNames[row.contype]
+        ? constraintTypeNames[row.contype]
+        : row.contype;
+      let resultItem = {
+        constarintName: row.conname,
+        constraintType,
+        constraintedColumn: null
+      };
+      if (row.conkey) {
+        try {
+          let constraintedColumnIndex = row.conkey[0] - 1;
+          resultItem.constraintedColumn =
+            result.columns[constraintedColumnIndex].column_name;
+          result.columns[constraintedColumnIndex].constraint = constraintType;
+        } catch (e) {
+          console.log(row);
+        }
+      }
+      return resultItem;
+    });
+    return result;
+  }
+
   private attachRelations({ config, relations }) {
     Object.keys(config).forEach(key => {
       // ignoring 'tables'
@@ -181,7 +224,7 @@ class PostgresDBParser implements IParcer {
       config[foreignTableName].relations.push(relationObj);
     });
 
-    config = this.resolveManyToMany({ config });
+    // config = this.resolveManyToMany({ config });
 
     return config;
   }
@@ -293,49 +336,6 @@ class PostgresDBParser implements IParcer {
     });
 
     return config;
-  }
-
-  private schemaParser(schemaObj) {
-    let result = { tables: [] };
-    schemaObj.rows.forEach(item => {
-      // excluding redudant tables
-      if (!item.show_tables.match(/(knex_)/)) {
-        result.tables.push(item.show_tables);
-      }
-    });
-    return result;
-  }
-
-  private tableParser(tableObj) {
-    let result: any = {};
-    result.columns = tableObj.rows.map(row => {
-      row.data_type = fieldTypeNames[row.data_type]
-        ? fieldTypeNames[row.data_type]
-        : row.data_type;
-      return row;
-    });
-    result.constraints = tableObj.constraints.rows.map(row => {
-      let constraintType = constraintTypeNames[row.contype]
-        ? constraintTypeNames[row.contype]
-        : row.contype;
-      let resultItem = {
-        constarintName: row.conname,
-        constraintType,
-        constraintedColumn: null
-      };
-      if (row.conkey) {
-        try {
-          let constraintedColumnIndex = row.conkey[0] - 1;
-          resultItem.constraintedColumn =
-            result.columns[constraintedColumnIndex].column_name;
-          result.columns[constraintedColumnIndex].constraint = constraintType;
-        } catch (e) {
-          console.log(row);
-        }
-      }
-      return resultItem;
-    });
-    return result;
   }
 }
 
