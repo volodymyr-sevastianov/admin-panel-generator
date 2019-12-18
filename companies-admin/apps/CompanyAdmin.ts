@@ -1,8 +1,8 @@
 import { FieldsSelector } from "@vbait/json-schema-model";
-import { ModelAdmin } from "../../lib/registration";
+import { ModelAdmin, ModelAdminOld } from "../../lib/registration";
 import { Company } from "./models";
 
-class CompanyAdmin extends ModelAdmin {
+class CompanyAdmin extends ModelAdminOld {
   model = Company;
   fields = ["name", "owner", "people"];
   listFields = new FieldsSelector(Company, [

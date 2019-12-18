@@ -9,7 +9,7 @@ import {
   IModelAdminConfig,
   IModelAdminConstructor
 } from "./interfaces";
-import ModelAdmin from "./ModelAdmin";
+import ModelAdmin from "./ModelAdminOld";
 import { ModelDoesNotExistError, ERROR_CODES } from "./errors";
 import { resolveConfigsFolder } from "../helpers/config-writer";
 import repositories from "../repositories";
@@ -71,7 +71,7 @@ class CreateApp implements ICreateApp {
     this.updateConfig(modelAdmin, config);
   }
 
-  addModel(
+  addModelAdmin(
     modelAdminConstructor: IModelAdminConstructor,
     tableName: string,
     config: IAppItemConfig = defaultConfig

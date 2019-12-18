@@ -27,6 +27,5 @@ const Company = createModel("Company", null, {
     }
   })
 });
-Company.dbTableName = "companies_companies";
 
 export default Company;

@@ -17,7 +17,7 @@ export interface IModelAdminFullConfig extends IModelAdminConfig {
 
 export interface ICreateApp {
   addTable(tableName: string, config: IAppItemConfig): void;
-  addModel(
+  addModelAdmin(
     modelAdminConstructor: IModelAdminConstructor,
     tableName: string,
     config: IAppItemConfig

@@ -1,4 +1,4 @@
-import { CreateApp } from "../lib/registration";
+import { CreateApp, ModelAdmin } from "../lib/registration";
 import CompanyAdmin from "./apps/CompanyAdmin";
 
 const adminApp = new CreateApp({
@@ -10,8 +10,16 @@ const adminApp = new CreateApp({
 //   section: ["My Models", "models"]
 // });
 
-adminApp.addModel(CompanyAdmin, "companies_companies", {
+adminApp.addModelAdmin(CompanyAdmin, "companies_companies", {
   section: ["My Models", "models"]
 });
+
+const modelAdmin = new ModelAdmin({
+  path: "",
+  routeApi1: "test",
+  table: "companies_companies"
+});
+modelAdmin.routes();
+// console.log(modelAdmin.routes());
 
 export default adminApp;
