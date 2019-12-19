@@ -1,5 +1,6 @@
 import { CreateApp, ModelAdmin } from "../lib/registration";
-import CompanyAdmin from "./apps/CompanyAdmin";
+// import CompanyAdmin from "./apps/CompanyAdmin";
+import Company from "./apps/models/Company";
 
 const adminApp = new CreateApp({
   name: "Admin Dashboard",
@@ -10,16 +11,46 @@ const adminApp = new CreateApp({
 //   section: ["My Models", "models"]
 // });
 
-adminApp.addModelAdmin(CompanyAdmin, "companies_companies", {
-  section: ["My Models", "models"]
-});
+// adminApp.addModelAdmin(CompanyAdmin, "companies_companies", {
+//   section: ["My Models", "models"]
+// });
+
+const sourcePath =
+  "/Users/flamps/Documents/WORK/Node/Shared/admin-panel-generator/companies-admin/configs";
 
 const modelAdmin = new ModelAdmin({
-  path: "",
-  routeApi1: "test",
-  table: "companies_companies"
+  path:
+    "/Users/flamps/Documents/WORK/Node/Shared/admin-panel-generator/companies-admin/configs",
+  table: "companies_companies",
+  m2m: [
+    [
+      "people",
+      "companies_companies",
+      "companies_companies_people",
+      "companies_user"
+    ],
+    ["parents", "companies_user", "companies_user_parents", "companies_parents"]
+  ]
 });
-modelAdmin.routes();
+// modelAdmin.routes();
 // console.log(modelAdmin.routes());
+
+class CompanyAdmin extends ModelAdmin {
+  levelToParse = 1;
+  // table = "companies_companies";
+  m2m = [
+    [
+      "people",
+      "companies_companies",
+      "companies_companies_people",
+      "companies_user"
+    ]
+  ] as [string, string, string, string][];
+  model = Company;
+}
+
+adminApp.addModelAdmin(CompanyAdmin, {
+  section: ["My Models", "models"]
+});
 
 export default adminApp;

@@ -26,7 +26,9 @@ class ModelAdmin implements IModelAdmin {
       if (!this.model._relationMappings && this.tableName) {
         this.model._relationMappings = parseTableConfig(
           this.sourcePath,
-          this.tableName
+          this.tableName,
+          [],
+          0
         ).relationMappings;
       }
       return this.model;
@@ -37,7 +39,12 @@ class ModelAdmin implements IModelAdmin {
       );
     }
     if (!this.model) {
-      const tableConfig = parseTableConfig(this.sourcePath, this.tableName);
+      const tableConfig = parseTableConfig(
+        this.sourcePath,
+        this.tableName,
+        [],
+        0
+      );
       this.model = createDynamicModel(this.tableName, tableConfig);
       this.model._relationMappings = tableConfig.relationMappings;
     }

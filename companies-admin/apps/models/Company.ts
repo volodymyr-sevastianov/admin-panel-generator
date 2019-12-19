@@ -8,7 +8,7 @@ import {
 } from "@vbait/json-schema-model";
 import User from "./User";
 
-const Company = createModel("Company", null, {
+const Company = createModel("companies_companies", null, {
   id: new NumberField({ primary: true }),
   name: new TextField({ label: "Name" }),
   email: new EmailField({ label: "Email" }),
