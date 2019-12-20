@@ -1,11 +1,25 @@
-import { createModel, NumberField, TextField } from "@vbait/json-schema-model";
+import {
+  createModel,
+  NumberField,
+  TextField,
+  ForeignKey
+} from "@vbait/json-schema-model";
 
-const User = createModel("User", null, {
+const Profile = createModel("companies_profile", null, {
   id: new NumberField({ primary: true }),
-  username: new TextField({ maxLength: 200 }),
-  email: new TextField({ maxLength: 200 })
+  firstName: new TextField({ maxLength: 200 }),
+  lastName: new TextField({ maxLength: 200 })
 });
 
-User.dbTableName = "companies_user";
+const User = createModel("companies_user", null, {
+  id: new NumberField({ primary: true }),
+  username: new TextField({ maxLength: 200 }),
+  email: new TextField({ maxLength: 200 }),
+  profile: new ForeignKey({
+    to: Profile,
+    sourceName: "profile_id",
+    required: false
+  })
+});
 
 export default User;

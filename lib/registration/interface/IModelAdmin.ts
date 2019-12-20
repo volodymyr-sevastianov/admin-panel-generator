@@ -12,6 +12,7 @@ export interface IModelAdminConstructor {
     table?: string;
     model?: any;
     m2m?: [string, string, string, string][];
+    repository?: any;
   }): IModelAdmin;
 }
 

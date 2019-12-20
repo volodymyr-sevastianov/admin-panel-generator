@@ -69,7 +69,11 @@ class CreateApp implements ICreateApp {
   }
 
   addTable(tableName: string, config: IAppItemConfig = defaultConfig) {
-    const modelAdmin = new ModelAdmin({ path: this.path, table: tableName });
+    const modelAdmin = new ModelAdmin({
+      path: this.path,
+      table: tableName,
+      repository: this.repository
+    });
     this.updateConfig(modelAdmin, config);
   }
 
@@ -77,7 +81,10 @@ class CreateApp implements ICreateApp {
     modelAdminConstructor: IModelAdminConstructor,
     config: IAppItemConfig = defaultConfig
   ) {
-    const modelAdmin = new modelAdminConstructor({ path: this.path });
+    const modelAdmin = new modelAdminConstructor({
+      path: this.path,
+      repository: this.repository
+    });
     this.updateConfig(modelAdmin, config);
   }
 

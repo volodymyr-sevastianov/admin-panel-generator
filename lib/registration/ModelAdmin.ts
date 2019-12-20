@@ -5,7 +5,7 @@ import { FieldsSelector } from "@vbait/json-schema-model";
 // import { IModelAdmin } from "./interfaces";
 import { IModelAdmin } from "./interface/IModelAdmin";
 import createDynamicModel from "./createDynamicModel";
-import Query from "./Query";
+import QueryBuilder from "./QueryBuilder";
 import parseTableConfig from "./parseTableConfig";
 import checkModelToValidTableConfig from "./checkModelToValidTableConfig";
 import { ModelDoesNotExistError, ERROR_CODES } from "./errors";
@@ -22,6 +22,8 @@ class ModelAdmin implements IModelAdmin {
   table?: string;
   m2m?: [string, string, string, string][];
   levelToParse: number = 2;
+  selectRelated?: string[] = [];
+  prefetchRelated?: string[] = [];
 
   // Models
   model: any;
@@ -38,19 +40,22 @@ class ModelAdmin implements IModelAdmin {
     routeApi,
     table,
     model,
-    m2m
+    m2m,
+    repository
   }: {
     path: string;
     routeApi?: string;
     table?: string;
     model?: any;
     m2m?: [string, string, string, string][];
+    repository?: any;
   }) {
     this._configSourcePath = path;
     this.routeApi = routeApi;
     this.table = table;
     this.model = model;
     this.m2m = m2m || [];
+    this.repository = repository;
   }
 
   private _tableToConfig() {
@@ -150,34 +155,49 @@ class ModelAdmin implements IModelAdmin {
 
   // API Endpoints
   configEndpoint(req, res) {
-    res.status(200).send({ data: "CONFIG" });
+    res.status(200).send({ data: {} });
   }
 
-  listEndpoint(req, res, next) {
-    const data = [];
-    res.status(200).send({ data });
-  }
+  listEndpoint = (req, res, next) => {
+    const model = this._modelForList();
+    const query = new QueryBuilder({
+      model,
+      selectRelated: this.selectRelated,
+      prefetchRelated: this.prefetchRelated
+    });
+    this.repository
+      .find({ queryBuilder: query.create() }, r => {
+        return r;
+        return new model(r).toJSFull();
+      })
+      .then(results => {
+        res.status(200).send({ data: results });
+      })
+      .catch(err => {
+        res.status(400).send(err.message);
+      });
+  };
 
-  detailEndpoint(req, res, next) {
+  detailEndpoint = (req, res, next) => {
     const data = {};
     res.status(200).send({ data });
-  }
+  };
 
-  editEndpoint(req, res, next) {
+  editEndpoint = (req, res, next) => {
     res.status(204).send();
-  }
+  };
 
-  addEndpoint(req, res, next) {
+  addEndpoint = (req, res, next) => {
     res.status(201).send({ data: 1 });
-  }
+  };
 
-  validateOnAdd(req, res, next) {
+  validateOnAdd = (req, res, next) => {
     next();
-  }
+  };
 
-  validateOnEdit(req, res, next) {
+  validateOnEdit = (req, res, next) => {
     next();
-  }
+  };
   // END API Endpoints
 }
 

@@ -37,16 +37,20 @@ const modelAdmin = new ModelAdmin({
 
 class CompanyAdmin extends ModelAdmin {
   levelToParse = 1;
-  // table = "companies_companies";
-  m2m = [
-    [
-      "people",
-      "companies_companies",
-      "companies_companies_people",
-      "companies_user"
-    ]
-  ] as [string, string, string, string][];
+  table = "companies_companies";
+  // m2m = [
+  //   [
+  //     "people",
+  //     "companies_companies",
+  //     "companies_companies_people",
+  //     "companies_user"
+  //   ]
+  // ] as [string, string, string, string][];
   model = Company;
+  listFields = ["name", "email", "ownerFullName"];
+  selectRelated = ["owner", "owner__profile"];
+  // selectRelated = ["owner", "owner__profile", "people__profile"];
+  // prefetchRelated = ["people"];
 }
 
 adminApp.addModelAdmin(CompanyAdmin, {
