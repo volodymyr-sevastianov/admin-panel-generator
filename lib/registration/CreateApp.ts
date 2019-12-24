@@ -2,8 +2,7 @@ import express from "express";
 import Knex from "knex";
 import dotenv from "dotenv";
 import paths from "path";
-import { IAppItemConfig } from "./interfaces";
-import { ICreateApp } from "./interface/ICreateApp";
+import { ICreateApp, IAppItemConfig } from "./interface/ICreateApp";
 import {
   IModelAdminConstructor,
   IModelAdmin,

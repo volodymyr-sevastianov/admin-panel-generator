@@ -2,17 +2,20 @@ import express from "express";
 import * as fs from "fs";
 import * as paths from "path";
 import { FieldsSelector } from "@vbait/json-schema-model";
-// import { IModelAdmin } from "./interfaces";
-import { IModelAdmin } from "./interface/IModelAdmin";
-import createDynamicModel from "./createDynamicModel";
-import QueryBuilder from "./QueryBuilder";
-import parseTableConfig from "./parseTableConfig";
-import checkModelToValidTableConfig from "./checkModelToValidTableConfig";
-import { ModelDoesNotExistError, ERROR_CODES } from "./errors";
+import { IModelAdmin } from "../interface/IModelAdmin";
+import createDynamicModel from "../createDynamicModel";
+import QueryBuilder from "../QueryBuilder";
+import parseTableConfig from "../parseTableConfig";
+import checkModelToValidTableConfig from "../checkModelToValidTableConfig";
+import { ModelDoesNotExistError, ERROR_CODES } from "../errors";
+import ListEndpoint from "./ListEndpoint";
+import selectorForModel from "./selectorForModel";
 
 class ModelAdmin implements IModelAdmin {
   private _configSourcePath: string;
   private _tableConfig: { columns: any; relationMappings?: any };
+  private _listEndpoint: ListEndpoint;
+  private _modelFieldsSelector: FieldsSelector;
 
   // api route
   routeApi: string;
@@ -31,9 +34,10 @@ class ModelAdmin implements IModelAdmin {
   editModel?: any;
 
   // fields for WEB APP
-  listFields: string[];
-  addFields: string[];
-  editFields: string[];
+  listFields: string[] = [];
+  listMapLabels: {} = {};
+  addFieldsSelector: FieldsSelector;
+  editFieldsSelector: FieldsSelector;
 
   constructor({
     path,
@@ -74,9 +78,7 @@ class ModelAdmin implements IModelAdmin {
       );
     } catch (err) {
       throw Error(
-        `${this.constructor.name}: Provide correct configuration. Error: ${
-          err.message
-        }`
+        `${this.constructor.name}: Provide correct configuration. Error: ${err.message}`
       );
     }
     return this._tableConfig;
@@ -100,9 +102,7 @@ class ModelAdmin implements IModelAdmin {
       return this.model;
     }
     throw Error(
-      `${
-        this.constructor.name
-      }: Provide model or table (filename from your configuration)`
+      `${this.constructor.name}: Provide model or table (filename from your configuration)`
     );
   }
 
@@ -115,12 +115,41 @@ class ModelAdmin implements IModelAdmin {
   }
 
   configForApp() {
+    if (!this.addFieldsSelector) {
+      this.addFieldsSelector = selectorForModel(this._modelForAdd());
+    }
+    if (!this.editFieldsSelector) {
+      this.editFieldsSelector = selectorForModel(this._modelForEdit());
+    }
+    if (!this._modelFieldsSelector) {
+      this._modelFieldsSelector = selectorForModel(
+        this._modelForList(),
+        this.selectRelated,
+        this.prefetchRelated
+      );
+    }
+    const prefix = this.routeApiPrefix();
     return {
       name: this.name(),
       path: this.routeApiPrefix(),
       canAdd: true,
       canEdit: true,
-      canDelete: true
+      canDelete: true,
+      listFields: this.listFields,
+      listMapLabels: this.listMapLabels,
+      selectRelated: this.selectRelated,
+      prefetchRelated: this.prefetchRelated,
+      endpoints: {
+        view: `/${prefix}`,
+        add: `/${prefix}`,
+        edit: `/${prefix}/:id`,
+        editData: `/${prefix}/:id`
+      },
+      schema: {
+        view: this._modelFieldsSelector.getSchema(),
+        add: this.addFieldsSelector.getSchema(),
+        edit: this.editFieldsSelector.getSchema()
+      }
     };
   }
 
@@ -154,28 +183,23 @@ class ModelAdmin implements IModelAdmin {
   }
 
   // API Endpoints
-  configEndpoint(req, res) {
-    res.status(200).send({ data: {} });
-  }
-
-  listEndpoint = (req, res, next) => {
-    const model = this._modelForList();
-    const query = new QueryBuilder({
-      model,
-      selectRelated: this.selectRelated,
-      prefetchRelated: this.prefetchRelated
+  configEndpoint = (req, res) => {
+    res.status(200).send({
+      data: {
+        ...this.configForApp()
+      }
     });
-    this.repository
-      .find({ queryBuilder: query.create() }, r => {
-        return r;
-        return new model(r).toJSFull();
-      })
-      .then(results => {
-        res.status(200).send({ data: results });
-      })
-      .catch(err => {
-        res.status(400).send(err.message);
-      });
+  };
+
+  listEndpoint = async (req, res, next) => {
+    const listEndpoint = this._createListEndpoint();
+    const fields = listEndpoint.validateRequestFields(req);
+    try {
+      const data = await listEndpoint.fetch({ fields });
+      res.status(200).send({ data });
+    } catch (err) {
+      res.status(500).send(err.message);
+    }
   };
 
   detailEndpoint = (req, res, next) => {
@@ -199,6 +223,36 @@ class ModelAdmin implements IModelAdmin {
     next();
   };
   // END API Endpoints
+
+  // Create Endpoints
+  private _createListEndpoint = () => {
+    if (this._listEndpoint) {
+      return this._listEndpoint;
+    }
+    const model = this._modelForList();
+    const query = new QueryBuilder({
+      model,
+      selectRelated: this.selectRelated,
+      prefetchRelated: this.prefetchRelated
+    });
+    const fields = model.getFields().map(f => f.name);
+    const extendFields = this.listFields
+      .filter(f => {
+        if (!fields.includes(f)) {
+          if (!this[f] || typeof this[f] !== "function") {
+            throw Error(`Field ${f} doesn't exist`);
+          }
+          return f;
+        }
+      })
+      .map(f => [f, this[f]]) as [string, Function][];
+    return new ListEndpoint({
+      repository: this.repository,
+      model,
+      query,
+      extendFields
+    });
+  };
 }
 
 export default ModelAdmin;

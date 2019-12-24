@@ -23,6 +23,15 @@ const parseTableConfig = (path, tableName, m2m, level = 1) => {
       };
     }
   );
+  m2m.forEach(([fieldName, table, throught, toTable]) => {
+    try {
+      fs.accessSync(paths.resolve(path, `${table}.json`), fs.constants.R_OK);
+      fs.accessSync(paths.resolve(path, `${throught}.json`), fs.constants.R_OK);
+      fs.accessSync(paths.resolve(path, `${toTable}.json`), fs.constants.R_OK);
+    } catch (err) {
+      throw Error(`Provide correct m2m for field "${fieldName}"`);
+    }
+  });
   m2m
     .filter(([_, t]) => t === tableName)
     .forEach(([fieldName, table, throught, toTable], index) => {

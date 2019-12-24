@@ -1,30 +1,39 @@
+import relatedFieldsForField from "./relatedFieldsForField";
+
 class QueryBuilder {
   private _table: string;
   private _fields: string[][] = [[], []];
+  private _whereIn: string[][] = [];
+  private _where: string[][] = [];
   private _joins: {
     name: string;
     sourceName: string;
     type: string;
-    query: QueryBuilder;
-  }[];
+    query?: QueryBuilder;
+    fields?: string[];
+  }[] = [];
   private _subquery: { name: string; throught: any; query: QueryBuilder }[];
 
   model: any;
   selectRelated: string[];
   prefetchRelated: string[];
+  prevJoin?: string;
 
   constructor({
     model,
     selectRelated,
-    prefetchRelated
+    prefetchRelated,
+    prevJoin
   }: {
     model: any;
     selectRelated: string[];
     prefetchRelated: string[];
+    prevJoin?: string;
   }) {
     this.model = model;
     this.selectRelated = selectRelated;
     this.prefetchRelated = prefetchRelated;
+    this.prevJoin = prevJoin;
   }
 
   private _tableName() {
@@ -64,59 +73,78 @@ class QueryBuilder {
     const table = this._tableName();
     const joins: any[] = [];
     this.selectRelated.forEach(field => {
-      const modelField = this.model.getFieldByName(field);
-      if (modelField) {
-        const model = modelField.getRelatedModel();
-        const selectRelated = selectRelatedFieldsForField(
-          this.selectRelated,
-          field
-        );
-        const prefetchRelated = selectRelatedFieldsForField(
-          this.prefetchRelated,
-          field
-        );
-        joins.push({
-          name: field,
-          sourceName: modelField.sourceName,
-          type: modelField.required ? "inner" : "left",
-          args: [
-            model.name,
-            `${table}.${modelField.sourceName}`,
-            `${model.name}.${model.getPrimaryField().sourceName}`
-          ],
-          query: new QueryBuilder({
-            model,
-            selectRelated,
-            prefetchRelated
-          }).create()
-        });
+      if (!this.model.getFieldByName(field.split("__")[0])) {
+        throw Error(`selectRelated: bad name ${field}`);
       }
+      const modelField = this.model.getFieldByName(field);
+      if (!modelField) return;
+      const model = modelField.getRelatedModel();
+      const selectRelated = relatedFieldsForField(this.selectRelated, field);
+      const prefetchRelated = relatedFieldsForField(
+        this.prefetchRelated,
+        field
+      );
+      const joinType =
+        this.prevJoin || (modelField.required ? "inner" : "left");
+      const queryBuilder = new QueryBuilder({
+        model,
+        selectRelated,
+        prefetchRelated
+      }).create();
+      joins.push({
+        name: field,
+        // sourceName: modelField.sourceName,
+        type: joinType,
+        args: [
+          model.name,
+          `${table}.${modelField.sourceName}`,
+          `${queryBuilder.table()}.${queryBuilder.modelPkSourceName()}`
+        ],
+        query: new QueryBuilder({
+          model,
+          selectRelated,
+          prefetchRelated,
+          prevJoin: joinType
+        }).create()
+      });
     });
     this._joins = joins;
   }
 
   private _createSubquery() {
     const subquery: any[] = [];
-    this.prefetchRelated.forEach(field => {
+    this.prefetchRelated.forEach((field, index) => {
       const modelField = this.model.getFieldByName(field);
       if (modelField) {
         const model = modelField.getRelatedModel();
-        const selectRelated = selectRelatedFieldsForField(
-          this.selectRelated,
-          field
-        );
-        const prefetchRelated = selectRelatedFieldsForField(
+        const selectRelated = relatedFieldsForField(this.selectRelated, field);
+        const prefetchRelated = relatedFieldsForField(
           this.prefetchRelated,
           field
         );
+        const throught = modelField.getRelatedData();
+        const queryBuilder = new QueryBuilder({
+          model,
+          selectRelated,
+          prefetchRelated
+        }).create();
+        const join = {
+          name: `_subquery_${index}`,
+          type: "inner",
+          args: [
+            throught.name,
+            `${queryBuilder.table()}.${queryBuilder.modelPkSourceName()}`,
+            `${throught.name}.${throught.to}`
+          ],
+          fields: [`${throught.name}.${throught.from}`]
+        };
+        queryBuilder.addJoin(join);
         subquery.push({
           name: field,
-          throught: modelField.getRelatedData(),
-          query: new QueryBuilder({
-            model,
-            selectRelated,
-            prefetchRelated
-          }).create()
+          whereInProperty: `${throught.name}.${throught.from}`,
+          query: queryBuilder,
+          joinName: `_subquery_${index}`,
+          equalTo: `${throught.name}.${throught.from}`
         });
       }
     });
@@ -131,15 +159,30 @@ class QueryBuilder {
     return this;
   }
 
+  addJoin(join) {
+    this._joins.push(join);
+    return this;
+  }
+
+  addWhereIn(args: [string, string]) {
+    this._whereIn.push(args);
+  }
+
   table() {
     return this._tableName();
+  }
+
+  modelName() {
+    return this.model.name;
   }
 
   fieldsForQuery() {
     const table = this._tableName();
     const fields = this._fields[1].map(f => `${table}.${f} as ${table}.${f}`);
     this._joins
-      .map(({ query }) => query.fieldsForQuery())
+      .map(({ query, fields = [] }) =>
+        query ? query.fieldsForQuery() : fields.map(f => `${f} as ${f}`)
+      )
       .forEach(f => fields.push(...f));
     return fields;
   }
@@ -151,18 +194,22 @@ class QueryBuilder {
   joins() {
     return this._joins;
   }
+
+  subquery() {
+    return this._subquery;
+  }
+
+  whereIn() {
+    return this._whereIn;
+  }
+
+  where() {
+    return this._where;
+  }
+
+  modelPkSourceName() {
+    return this.model.getPrimaryField().sourceName;
+  }
 }
 
 export default QueryBuilder;
-
-const selectRelatedFieldsForField = (list, field) => {
-  return list
-    .map(f => {
-      const splitted = f.split("__");
-      if (splitted[0] === field && splitted.length > 1) {
-        return splitted.slice(1).join("__");
-      }
-      return null;
-    })
-    .filter(f => f);
-};

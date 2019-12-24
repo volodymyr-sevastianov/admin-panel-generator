@@ -36,21 +36,29 @@ const modelAdmin = new ModelAdmin({
 // console.log(modelAdmin.routes());
 
 class CompanyAdmin extends ModelAdmin {
-  levelToParse = 1;
+  levelToParse = 2;
   table = "companies_companies";
-  // m2m = [
-  //   [
-  //     "people",
-  //     "companies_companies",
-  //     "companies_companies_people",
-  //     "companies_user"
-  //   ]
-  // ] as [string, string, string, string][];
+  m2m = [
+    [
+      "people",
+      "companies_companies",
+      "companies_companies_people",
+      "companies_user"
+    ]
+  ] as [string, string, string, string][];
   model = Company;
   listFields = ["name", "email", "ownerFullName"];
-  selectRelated = ["owner", "owner__profile"];
-  // selectRelated = ["owner", "owner__profile", "people__profile"];
-  // prefetchRelated = ["people"];
+  listMapLabels = { name: "Company Name", ownerFullName: "Full Name" };
+  // selectRelated = ["owner_id", "owner_id__profile_id", "people__profile_id"];
+  selectRelated = ["owner", "owner__profile", "people__profile"];
+  prefetchRelated = ["people"];
+
+  ownerFullName = item => {
+    if (item.owner) {
+      // return item.owner.profile.fullName();
+      return `${item.owner.profile.firstName} ${item.owner.profile.lastName}`;
+    }
+  };
 }
 
 adminApp.addModelAdmin(CompanyAdmin, {
