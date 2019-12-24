@@ -1,6 +1,7 @@
 export interface IModelAdmin {
   name(): string;
   configForApp(): IModelAdminAppConfig;
+  configSimpleForApp(): IModelAdminAppConfig;
   routeApiPrefix(): string;
   routes(): any;
 }

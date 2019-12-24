@@ -55,7 +55,7 @@ class CreateApp implements ICreateApp {
 
     this.models.push(modelAdmin);
 
-    const modelConfig = modelAdmin.configForApp();
+    const modelConfig = modelAdmin.configSimpleForApp();
     if (this.sections[name]) {
       this.sections[name].models.push(modelConfig);
     } else {

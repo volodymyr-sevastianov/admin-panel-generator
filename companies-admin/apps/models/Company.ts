@@ -28,4 +28,6 @@ const Company = createModel("companies_companies", null, {
   })
 });
 
+Company.displayName = "Company";
+
 export default Company;

@@ -36,6 +36,7 @@ class ModelAdmin implements IModelAdmin {
   // fields for WEB APP
   listFields: string[] = [];
   listMapLabels: {} = {};
+  listLinkedFields: string[] = [];
   addFieldsSelector: FieldsSelector;
   editFieldsSelector: FieldsSelector;
 
@@ -114,6 +115,16 @@ class ModelAdmin implements IModelAdmin {
     return this.editModel || this._modelForList();
   }
 
+  configSimpleForApp() {
+    return {
+      name: this.name(),
+      path: this.routeApiPrefix(),
+      canAdd: true,
+      canEdit: true,
+      canDelete: true
+    };
+  }
+
   configForApp() {
     if (!this.addFieldsSelector) {
       this.addFieldsSelector = selectorForModel(this._modelForAdd());
@@ -129,14 +140,22 @@ class ModelAdmin implements IModelAdmin {
       );
     }
     const prefix = this.routeApiPrefix();
+    const model = this._modelForList();
+    const listFields = this.listFields.length
+      ? this.listFields
+      : [model.getPrimaryField().name];
+    const listLinkedFields = this.listLinkedFields.length
+      ? this.listLinkedFields
+      : [listFields[0]];
     return {
       name: this.name(),
       path: this.routeApiPrefix(),
       canAdd: true,
       canEdit: true,
       canDelete: true,
-      listFields: this.listFields,
+      listFields,
       listMapLabels: this.listMapLabels,
+      listLinkedFields,
       selectRelated: this.selectRelated,
       prefetchRelated: this.prefetchRelated,
       endpoints: {
@@ -167,7 +186,7 @@ class ModelAdmin implements IModelAdmin {
 
   name() {
     const model = this._modelForList();
-    return model.name;
+    return model.displayName || model.name;
   }
 
   routes() {
