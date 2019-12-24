@@ -17,7 +17,7 @@ app.use(function(err, req, res, next) {
 });
 
 app.listen(3001, () => {
-  console.log("App listen on 3000 port.");
+  console.log("App listen on 3001 port.");
 });
 
 export { knex };
