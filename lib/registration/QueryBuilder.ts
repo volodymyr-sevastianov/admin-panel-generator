@@ -5,6 +5,7 @@ class QueryBuilder {
   private _fields: string[][] = [[], []];
   private _whereIn: string[][] = [];
   private _where: string[][] = [];
+  private _orderBy: string[][] = [];
   private _joins: {
     name: string;
     sourceName: string;
@@ -205,6 +206,14 @@ class QueryBuilder {
 
   where() {
     return this._where;
+  }
+
+  orderBy() {
+    const table = this._tableName();
+    if (this._orderBy.length) {
+      return this._orderBy;
+    }
+    return [[`${table}.${this.modelPkSourceName()}`, "desc"]];
   }
 
   modelPkSourceName() {

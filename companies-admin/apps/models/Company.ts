@@ -10,9 +10,13 @@ import User from "./User";
 
 const Company = createModel("companies_companies", null, {
   id: new NumberField({ primary: true }),
-  name: new TextField({ label: "Name" }),
-  email: new EmailField({ label: "Email" }),
-  description: new TextField({ required: false, label: "Description" }),
+  name: new TextField({ label: "Name", maxLength: 10 }),
+  email: new EmailField({ label: "Email", maxLength: 200 }),
+  description: new TextField({
+    required: false,
+    label: "Description",
+    maxLength: 200
+  }),
   owner: new ForeignKey({
     sourceName: "owner_id",
     required: false,
@@ -29,5 +33,9 @@ const Company = createModel("companies_companies", null, {
 });
 
 Company.displayName = "Company";
+
+Company.prototype.__display__ = function() {
+  return this.name;
+};
 
 export default Company;

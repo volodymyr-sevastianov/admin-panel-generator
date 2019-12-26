@@ -8,13 +8,15 @@ import QueryBuilder from "../QueryBuilder";
 import parseTableConfig from "../parseTableConfig";
 import checkModelToValidTableConfig from "../checkModelToValidTableConfig";
 import { ModelDoesNotExistError, ERROR_CODES } from "../errors";
-import ListEndpoint from "./ListEndpoint";
+import ViewEndpoint from "./ViewEndpoint";
+import ChangeEndpoint from "./ChangeEndpoint";
 import selectorForModel from "./selectorForModel";
 
 class ModelAdmin implements IModelAdmin {
   private _configSourcePath: string;
   private _tableConfig: { columns: any; relationMappings?: any };
-  private _listEndpoint: ListEndpoint;
+  private _viewEndpoint: ViewEndpoint;
+  private _changeEndpoint: ChangeEndpoint;
   private _modelFieldsSelector: FieldsSelector;
 
   // api route
@@ -39,6 +41,8 @@ class ModelAdmin implements IModelAdmin {
   listLinkedFields: string[] = [];
   addFieldsSelector: FieldsSelector;
   editFieldsSelector: FieldsSelector;
+  addFormFields: string[] = [];
+  editFormFields: string[] = [];
 
   constructor({
     path,
@@ -108,11 +112,48 @@ class ModelAdmin implements IModelAdmin {
   }
 
   private _modelForAdd() {
-    return this.addModel || this._modelForList();
+    if (this.addModel) {
+      if (!this.addModel.__dbTableConfig && this.table) {
+        this.addModel.__dbTableConfig = this._tableToConfig();
+        checkModelToValidTableConfig(this.addModel, this._tableToConfig());
+      }
+      return this.addModel;
+    }
+    return this._modelForList();
   }
 
   private _modelForEdit() {
-    return this.editModel || this._modelForList();
+    if (this.editModel) {
+      if (!this.editModel.__dbTableConfig && this.table) {
+        this.editModel.__dbTableConfig = this._tableToConfig();
+        checkModelToValidTableConfig(this.editModel, this._tableToConfig());
+      }
+      return this.editModel;
+    }
+    return this._modelForList();
+  }
+
+  formFields() {
+    const addModel = this._modelForAdd();
+    const editModel = this._modelForEdit();
+
+    const addFormFields = this.addFormFields.length
+      ? this.addFormFields
+      : addModel
+          .getFields()
+          .filter(field => !field.exclude)
+          .map(field => field.name);
+
+    const editFormFields = this.editFormFields.length
+      ? this.editFormFields
+      : editModel
+          .getFields()
+          .filter(field => !field.exclude)
+          .map(field => field.name);
+    return {
+      addFormFields,
+      editFormFields
+    };
   }
 
   configSimpleForApp() {
@@ -126,27 +167,31 @@ class ModelAdmin implements IModelAdmin {
   }
 
   configForApp() {
+    const model = this._modelForList();
+    const addModel = this._modelForAdd();
+    const editModel = this._modelForEdit();
+
     if (!this.addFieldsSelector) {
-      this.addFieldsSelector = selectorForModel(this._modelForAdd());
+      this.addFieldsSelector = selectorForModel(addModel);
     }
     if (!this.editFieldsSelector) {
-      this.editFieldsSelector = selectorForModel(this._modelForEdit());
+      this.editFieldsSelector = selectorForModel(editModel);
     }
     if (!this._modelFieldsSelector) {
       this._modelFieldsSelector = selectorForModel(
-        this._modelForList(),
+        model,
         this.selectRelated,
         this.prefetchRelated
       );
     }
     const prefix = this.routeApiPrefix();
-    const model = this._modelForList();
     const listFields = this.listFields.length
       ? this.listFields
-      : [model.getPrimaryField().name];
+      : ["__display__"];
     const listLinkedFields = this.listLinkedFields.length
       ? this.listLinkedFields
       : [listFields[0]];
+
     return {
       name: this.name(),
       path: this.routeApiPrefix(),
@@ -154,7 +199,8 @@ class ModelAdmin implements IModelAdmin {
       canEdit: true,
       canDelete: true,
       listFields,
-      listMapLabels: this.listMapLabels,
+      ...this.formFields(),
+      listMapLabels: { ...this.listMapLabels, __display__: model.name },
       listLinkedFields,
       selectRelated: this.selectRelated,
       prefetchRelated: this.prefetchRelated,
@@ -198,6 +244,7 @@ class ModelAdmin implements IModelAdmin {
     router.get(`/${prefix}`, this.listEndpoint);
     router.get(`/${prefix}/:id`, this.detailEndpoint);
     router.put(`/${prefix}/:id`, this.validateOnEdit, this.editEndpoint);
+    router.get(`/${prefix}/:id/initial`, this.editInitialEndpoint);
     return router;
   }
 
@@ -211,10 +258,10 @@ class ModelAdmin implements IModelAdmin {
   };
 
   listEndpoint = async (req, res, next) => {
-    const listEndpoint = this._createListEndpoint();
-    const fields = listEndpoint.validateRequestFields(req);
+    const viewEndpoint = this._createViewEndpoint();
+    const fields = viewEndpoint.validateRequestFields(req);
     try {
-      const data = await listEndpoint.fetch({ fields });
+      const data = await viewEndpoint.fetch({ fields });
       res.status(200).send({ data });
     } catch (err) {
       res.status(500).send(err.message);
@@ -230,8 +277,18 @@ class ModelAdmin implements IModelAdmin {
     res.status(204).send();
   };
 
+  editInitialEndpoint = (req, res, next) => {
+    res.status(200).send({ data: "" });
+  };
+
   addEndpoint = (req, res, next) => {
-    res.status(201).send({ data: 1 });
+    const changeEndpoint = this._createChangeEndpoint();
+    try {
+      changeEndpoint.create(req.body);
+      res.status(201).send({ data: 1 });
+    } catch (err) {
+      res.status(500).send(err.message);
+    }
   };
 
   validateOnAdd = (req, res, next) => {
@@ -244,9 +301,9 @@ class ModelAdmin implements IModelAdmin {
   // END API Endpoints
 
   // Create Endpoints
-  private _createListEndpoint = () => {
-    if (this._listEndpoint) {
-      return this._listEndpoint;
+  private _createViewEndpoint = () => {
+    if (this._viewEndpoint) {
+      return this._viewEndpoint;
     }
     const model = this._modelForList();
     const query = new QueryBuilder({
@@ -265,12 +322,26 @@ class ModelAdmin implements IModelAdmin {
         }
       })
       .map(f => [f, this[f]]) as [string, Function][];
-    return new ListEndpoint({
+    this._viewEndpoint = new ViewEndpoint({
       repository: this.repository,
       model,
       query,
       extendFields
     });
+    return this._viewEndpoint;
+  };
+
+  private _createChangeEndpoint = () => {
+    if (this._changeEndpoint) {
+      return this._changeEndpoint;
+    }
+    this._changeEndpoint = new ChangeEndpoint({
+      repository: this.repository,
+      addModel: this._modelForAdd(),
+      editModel: this._modelForEdit(),
+      ...this.formFields()
+    });
+    return this._changeEndpoint;
   };
 }
 
