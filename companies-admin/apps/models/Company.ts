@@ -32,6 +32,7 @@ const Company = createModel("companies_companies", null, {
   })
 });
 
+Company.__table__ = "companies_companies";
 Company.displayName = "Company";
 
 Company.prototype.__display__ = function() {

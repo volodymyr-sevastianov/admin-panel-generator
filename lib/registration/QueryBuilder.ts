@@ -4,7 +4,7 @@ class QueryBuilder {
   private _table: string;
   private _fields: string[][] = [[], []];
   private _whereIn: string[][] = [];
-  private _where: string[][] = [];
+  private _where: [string, string, string][] = [];
   private _orderBy: string[][] = [];
   private _joins: {
     name: string;
@@ -22,13 +22,13 @@ class QueryBuilder {
 
   constructor({
     model,
-    selectRelated,
-    prefetchRelated,
+    selectRelated = [],
+    prefetchRelated = [],
     prevJoin
   }: {
     model: any;
-    selectRelated: string[];
-    prefetchRelated: string[];
+    selectRelated?: string[];
+    prefetchRelated?: string[];
     prevJoin?: string;
   }) {
     this.model = model;
@@ -38,15 +38,7 @@ class QueryBuilder {
   }
 
   private _tableName() {
-    if (this._table) {
-      return this._table;
-    }
-    if (this.model.__dbTableConfig) {
-      this._table = this.model.__dbTableConfig.tableName;
-    } else {
-      this._table = this.model.name;
-    }
-    return this._table;
+    return this.model.__table__ || this.model.name;
   }
 
   private _createFields() {
@@ -167,6 +159,12 @@ class QueryBuilder {
 
   addWhereIn(args: [string, string]) {
     this._whereIn.push(args);
+    return this;
+  }
+
+  addWhere(args: [string, string, string]) {
+    this._where.push(args);
+    return this;
   }
 
   table() {

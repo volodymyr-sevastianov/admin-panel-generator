@@ -1,45 +1,35 @@
 import ApiEndpoint from "./ApiEndpoint";
 
-class ChangeEndpoint extends ApiEndpoint {
-  protected _addModel: any;
-  protected _editModel: any;
-  protected _addFormFields: string[];
-  protected _editFormFields: string[];
+class ChangeEndpoint {
+  repository: any;
+  addModel: any;
+  editModel: any;
+  addFormFields: string[];
+  editFormFields: string[];
 
   constructor({
+    repository,
     addModel,
     editModel,
     addFormFields,
-    editFormFields,
-    ...rest
+    editFormFields
   }: {
+    repository: any;
     addModel: any;
     editModel: any;
     addFormFields: string[];
     editFormFields: string[];
-    repository: any;
-    model?: any;
   }) {
-    super(rest);
-    this._addModel = addModel;
-    this._editModel = editModel;
-    this._addFormFields = addFormFields;
-    this._editFormFields = editFormFields;
-  }
-
-  tableNameForModel(model: any) {
-    let table;
-    if (model.__dbTableConfig) {
-      table = model.__dbTableConfig.tableName;
-    } else {
-      table = model.name;
-    }
-    return table;
+    this.repository = repository;
+    this.addModel = addModel;
+    this.editModel = editModel;
+    this.addFormFields = addFormFields;
+    this.editFormFields = editFormFields;
   }
 
   async create(values: any) {
-    const table = this.tableNameForModel(this._addModel);
-    return this._repository.add(table, values);
+    const table = this.addModel.__table__;
+    return this.repository.add(table, values);
   }
 }
 

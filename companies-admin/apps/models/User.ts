@@ -25,4 +25,8 @@ const User = createModel("companies_user", null, {
   })
 });
 
+User.prototype.__display__ = function() {
+  return this.email;
+};
+
 export default User;
