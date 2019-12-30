@@ -1,4 +1,5 @@
 export interface IModelAdmin {
+  init(): IModelAdmin;
   name(): string;
   configForApp(): IModelAdminAppConfig;
   configSimpleForApp(): IModelAdminAppConfig;

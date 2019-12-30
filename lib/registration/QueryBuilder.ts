@@ -1,3 +1,4 @@
+import { FieldsSelector } from "@vbait/json-schema-model";
 import relatedFieldsForField from "./relatedFieldsForField";
 
 class QueryBuilder {
@@ -19,6 +20,27 @@ class QueryBuilder {
   selectRelated: string[];
   prefetchRelated: string[];
   prevJoin?: string;
+
+  static createFromSelector(selector: FieldsSelector): QueryBuilder {
+    const model = selector.model();
+    const relatedFields = model.getRelatedFields();
+    const selectRelated = relatedFields
+      .filter(field => !field.hasMany())
+      .map(field => field.name);
+    const prefetchRelated = relatedFields
+      .filter(field => field.hasMany())
+      .map(field => field.name);
+
+    return new QueryBuilder({
+      model: selector.model(),
+      selectRelated: Object.keys(selector.relatives()).filter(f =>
+        selectRelated.includes(f)
+      ),
+      prefetchRelated: Object.keys(selector.relatives()).filter(f =>
+        prefetchRelated.includes(f)
+      )
+    });
+  }
 
   constructor({
     model,

@@ -1,23 +1,22 @@
 import express from "express";
 import * as fs from "fs";
 import * as paths from "path";
-import { FieldsSelector } from "@vbait/json-schema-model";
+import { FieldsSelector, ValidationError } from "@vbait/json-schema-model";
 import { IModelAdmin } from "../interface/IModelAdmin";
 import createDynamicModel from "../createDynamicModel";
 import QueryBuilder from "../QueryBuilder";
 import parseTableConfig from "../parseTableConfig";
 import checkModelToValidTableConfig from "../checkModelToValidTableConfig";
 import { ModelDoesNotExistError, ERROR_CODES } from "../errors";
-import ViewEndpoint from "./ViewEndpoint";
-import ChangeEndpoint from "./ChangeEndpoint";
 import selectorForModel from "./selectorForModel";
+import { displayModelItem, tableName } from "../utils";
 
 class ModelAdmin implements IModelAdmin {
   private _configSourcePath: string;
   private _tableConfig: { columns: any; relationMappings?: any };
-  private _viewEndpoint: ViewEndpoint;
-  private _changeEndpoint: ChangeEndpoint;
   private _modelFieldsSelector: FieldsSelector;
+  private _addFieldsSelector: FieldsSelector;
+  private _editFieldsSelector: FieldsSelector;
 
   // api route
   routeApi: string;
@@ -39,8 +38,6 @@ class ModelAdmin implements IModelAdmin {
   listFields: string[] = [];
   listMapLabels: {} = {};
   listLinkedFields: string[] = [];
-  addFieldsSelector: FieldsSelector;
-  editFieldsSelector: FieldsSelector;
   addFormFields: string[] = [];
   editFormFields: string[] = [];
 
@@ -130,90 +127,66 @@ class ModelAdmin implements IModelAdmin {
     return this._modelForList();
   }
 
-  formFields() {
-    const addModel = this._modelForAdd();
-    const editModel = this._modelForEdit();
+  protected _listData = async ({
+    where = []
+  }: {
+    where?: [string, string, string][];
+  }) => {
+    const fields = this.model.getFields().map(f => f.name);
+    const extendFields = this.listFields
+      .filter(f => {
+        if (!fields.includes(f)) {
+          if (!this[f] || typeof this[f] !== "function") {
+            throw Error(`Field ${f} doesn't exist`);
+          }
+          return f;
+        }
+      })
+      .map(f => [f, this[f]]) as [string, Function][];
 
-    const addFormFields = this.addFormFields.length
-      ? this.addFormFields
-      : addModel
-          .getFields()
-          .filter(field => !field.exclude)
-          .map(field => field.name);
-
-    const editFormFields = this.editFormFields.length
-      ? this.editFormFields
-      : editModel
-          .getFields()
-          .filter(field => !field.exclude)
-          .map(field => field.name);
-    return {
-      addFormFields,
-      editFormFields
-    };
-  }
-
-  configSimpleForApp() {
-    return {
-      name: this.name(),
-      path: this.routeApiPrefix(),
-      canAdd: true,
-      canEdit: true,
-      canDelete: true
-    };
-  }
-
-  configForApp() {
-    const model = this._modelForList();
-    const addModel = this._modelForAdd();
-    const editModel = this._modelForEdit();
-
-    if (!this.addFieldsSelector) {
-      this.addFieldsSelector = selectorForModel(addModel);
-    }
-    if (!this.editFieldsSelector) {
-      this.editFieldsSelector = selectorForModel(editModel);
-    }
-    if (!this._modelFieldsSelector) {
-      this._modelFieldsSelector = selectorForModel(
-        model,
-        this.selectRelated,
-        this.prefetchRelated
-      );
-    }
-    const prefix = this.routeApiPrefix();
-    const listFields = this.listFields.length
-      ? this.listFields
-      : ["__display__"];
-    const listLinkedFields = this.listLinkedFields.length
-      ? this.listLinkedFields
-      : [listFields[0]];
-
-    return {
-      name: this.name(),
-      path: this.routeApiPrefix(),
-      canAdd: true,
-      canEdit: true,
-      canDelete: true,
-      listFields,
-      ...this.formFields(),
-      listMapLabels: { ...this.listMapLabels, __display__: model.name },
-      listLinkedFields,
+    const queryBuilder = new QueryBuilder({
+      model: this.model,
       selectRelated: this.selectRelated,
-      prefetchRelated: this.prefetchRelated,
-      endpoints: {
-        view: `/${prefix}`,
-        add: `/${prefix}`,
-        edit: `/${prefix}/:id`,
-        editData: `/${prefix}/:id`
-      },
-      schema: {
-        view: this._modelFieldsSelector.getSchema(),
-        add: this.addFieldsSelector.getSchema(),
-        edit: this.editFieldsSelector.getSchema()
+      prefetchRelated: this.prefetchRelated
+    }).create();
+
+    where.forEach(([property, value, operator]) => {
+      queryBuilder.addWhere([property, value, operator]);
+    });
+
+    const results = await this.repository.find(
+      { queryBuilder },
+      repositoryValue => {
+        const item = new this.model(repositoryValue, {
+          useDefault: false,
+          passWithErrors: true
+        });
+        const newItem = item.toJSFull();
+        Object.assign(newItem, {
+          __display__: item.__display__ ? item.__display__() : item.pk
+        });
+        if (extendFields.length) {
+          Object.assign(
+            newItem,
+            extendFields.reduce((acc, [name, func]) => {
+              acc[name] = func(item);
+              return acc;
+            }, {})
+          );
+        }
+        return newItem;
       }
-    };
-  }
+    );
+    return results;
+  };
+
+  protected _detailData = async id => {
+    const property = `${this.model.__table__}.${
+      this.model.getPrimaryField().sourceName
+    }`;
+    const filter = [property, id, "="] as [string, string, string];
+    return this._listData({ where: [filter] });
+  };
 
   routeApiPrefix() {
     if (this.routeApi) {
@@ -228,8 +201,108 @@ class ModelAdmin implements IModelAdmin {
   }
 
   name() {
-    const model = this._modelForList();
-    return model.displayName || model.name;
+    return this.model.__display__ || this.model.name;
+  }
+
+  init() {
+    this.model = this._modelForList();
+    this.addModel = this._modelForAdd();
+    this.editModel = this._modelForEdit();
+
+    if (!this._addFieldsSelector) {
+      const relatedFields = this.addModel.getRelatedFields();
+      const selectRelated = relatedFields
+        .filter(field => !field.hasMany())
+        .map(field => field.name);
+      const prefetchRelated = relatedFields
+        .filter(field => field.hasMany())
+        .map(field => field.name);
+      this._addFieldsSelector = selectorForModel(
+        this.addModel,
+        selectRelated,
+        prefetchRelated
+      );
+    }
+    if (!this._editFieldsSelector) {
+      const relatedFields = this.editModel.getRelatedFields();
+      const selectRelated = relatedFields
+        .filter(field => !field.hasMany())
+        .map(field => field.name);
+      const prefetchRelated = relatedFields
+        .filter(field => field.hasMany())
+        .map(field => field.name);
+      this._editFieldsSelector = selectorForModel(
+        this.editModel,
+        selectRelated,
+        prefetchRelated
+      );
+    }
+    if (!this._modelFieldsSelector) {
+      this._modelFieldsSelector = selectorForModel(
+        this.model,
+        this.selectRelated,
+        this.prefetchRelated
+      );
+    }
+
+    if (!this.listFields.length) {
+      this.listFields = ["__display__"];
+    }
+
+    if (!this.listLinkedFields.length) {
+      this.listLinkedFields = [this.listFields[0]];
+    }
+
+    if (!this.addFormFields.length) {
+      this.addFormFields = this.addModel
+        .getFields()
+        .filter(field => !field.exclude)
+        .map(field => field.name);
+    }
+
+    if (!this.editFormFields.length) {
+      this.editFormFields = this.editModel
+        .getFields()
+        .filter(field => !field.exclude)
+        .map(field => field.name);
+    }
+
+    Object.assign(this.listMapLabels, { __display__: this.model.name });
+
+    this.routeApiPrefix();
+    return this;
+  }
+
+  configSimpleForApp() {
+    return {
+      name: this.name(),
+      path: this.routeApi,
+      canAdd: true,
+      canEdit: true,
+      canDelete: true
+    };
+  }
+
+  configForApp() {
+    return {
+      name: this.name(),
+      path: this.routeApi,
+      canAdd: true,
+      canEdit: true,
+      canDelete: true,
+      listFields: this.listFields,
+      addFormFields: this.addFormFields,
+      editFormFields: this.editFormFields,
+      listMapLabels: this.listMapLabels,
+      listLinkedFields: this.listLinkedFields,
+      selectRelated: this.selectRelated,
+      prefetchRelated: this.prefetchRelated,
+      schema: {
+        view: this._modelFieldsSelector.getSchema(),
+        add: this._addFieldsSelector.getSchema(),
+        edit: this._editFieldsSelector.getSchema()
+      }
+    };
   }
 
   routes() {
@@ -242,7 +315,7 @@ class ModelAdmin implements IModelAdmin {
     router.get(`/${prefix}/:id`, this.detailEndpoint);
     router.put(`/${prefix}/:id`, this.validateOnEdit, this.editEndpoint);
     router.get(`/${prefix}/:id/initial`, this.editInitialEndpoint);
-    router.get(`/${prefix}/:id/fields/:field`, this.fieldListEndpoint);
+    router.get(`/${prefix}/fields/:field`, this.fieldListEndpoint);
     return router;
   }
 
@@ -256,11 +329,24 @@ class ModelAdmin implements IModelAdmin {
   };
 
   listEndpoint = async (req, res, next) => {
-    const viewEndpoint = this._createViewEndpoint();
-    const fields = viewEndpoint.validateRequestFields(req);
     try {
-      const data = await viewEndpoint.fetch({ fields });
-      res.status(200).send({ data });
+      const results = await this._listData({});
+      const fields = undefined;
+      if (fields && fields.length) {
+        const listFields = [...fields];
+        const pk = this.model.getPrimaryField().name;
+        if (!listFields.includes(pk)) {
+          listFields.unshift(pk);
+        }
+        return results.map(item => {
+          const newItem = {};
+          listFields.forEach(f => {
+            newItem[f] = item[f];
+          });
+          return newItem;
+        });
+      }
+      res.status(200).send({ data: results });
     } catch (err) {
       res.status(500).send(err.message);
     }
@@ -268,21 +354,12 @@ class ModelAdmin implements IModelAdmin {
 
   editInitialEndpoint = async (req, res, next) => {
     const { id } = req.params;
-    const model = this._modelForEdit();
+    const model = this.editModel;
     const pk = model.getPrimaryField().sourceName;
-    const relatedFields = model.getRelatedFields();
-    const selectRelated = relatedFields
-      .filter(field => !field.hasMany())
-      .map(field => field.name);
-    const prefetchRelated = relatedFields
-      .filter(field => field.hasMany())
-      .map(field => field.name);
 
-    const queryBuilder = new QueryBuilder({
-      model,
-      selectRelated,
-      prefetchRelated
-    })
+    const queryBuilder = QueryBuilder.createFromSelector(
+      this._editFieldsSelector
+    )
       .create()
       .addWhere([`${model.__table__}.${pk}`, id, "="]);
 
@@ -293,12 +370,10 @@ class ModelAdmin implements IModelAdmin {
       } else {
         const instance = new model(data[0]);
         const detail = Object.assign(instance.toJSFull(), {
-          __display__: instance.__display__
-            ? instance.__display__()
-            : instance.pk
+          __display__: displayModelItem(instance)
         });
         const schema = req.query.hasOwnProperty("withSchema")
-          ? selectorForModel(model, selectRelated, prefetchRelated).getSchema()
+          ? this._editFieldsSelector.getSchema()
           : undefined;
         res.status(200).send({ data: detail, schema });
       }
@@ -308,7 +383,7 @@ class ModelAdmin implements IModelAdmin {
   };
 
   fieldListEndpoint = async (req, res, next) => {
-    const { id, field: fieldName } = req.params;
+    const { field: fieldName } = req.params;
     const model = this._modelForEdit();
     const field = model.getFieldByName(fieldName);
     if (!field || field.isLocal()) {
@@ -322,7 +397,7 @@ class ModelAdmin implements IModelAdmin {
     const data = await this.repository.find({ queryBuilder }, r => {
       const instance = new relatedModel(r);
       return Object.assign(instance.toJSFull(), {
-        __display__: instance.__display__ ? instance.__display__() : instance.pk
+        __display__: displayModelItem(instance)
       });
     });
     const schema = req.query.hasOwnProperty("withSchema")
@@ -333,13 +408,8 @@ class ModelAdmin implements IModelAdmin {
 
   detailEndpoint = async (req, res, next) => {
     const { id } = req.params;
-    const viewEndpoint = this._createViewEndpoint();
-    const property = `${viewEndpoint
-      .query()
-      .table()}.${viewEndpoint.query().modelPkSourceName()}`;
-    viewEndpoint.query().addWhere([property, id, "="]);
     try {
-      const data = await viewEndpoint.fetch();
+      const data = await this._detailData(id);
       if (!data.length) {
         res.status(404).send();
       } else {
@@ -350,16 +420,44 @@ class ModelAdmin implements IModelAdmin {
     }
   };
 
-  editEndpoint = (req, res, next) => {
+  editEndpoint = async (req, res, next) => {
     res.status(204).send();
   };
 
-  addEndpoint = (req, res, next) => {
-    const changeEndpoint = this._createChangeEndpoint();
+  addEndpoint = async (req, res, next) => {
+    const table = this.addModel.__table__;
     try {
-      changeEndpoint.create(req.body);
-      res.status(201).send({ data: 1 });
+      const pkName = this.addModel.getPrimaryField().sourceName;
+      const m2mFields = this.addModel
+        .getRelatedFields()
+        .filter(f => this.addFormFields.includes(f.name) && f.hasMany());
+      const item = new this.addModel(req.body).clean(false, this.addFormFields);
+      const source = item.toSourceFields({ fields: this.addFormFields });
+      const subquery = [];
+      m2mFields.forEach(f => {
+        const { name, from, to } = f.getRelatedData();
+        (source[f.sourceName] || []).forEach(toValue => {
+          subquery.push({
+            table: name,
+            from,
+            to,
+            toValue
+          });
+        });
+        delete source[f.sourceName];
+      });
+
+      const ids = await this.repository.addWithTransaction({
+        table,
+        values: source,
+        returning: pkName,
+        subquery
+      });
+      res.status(201).send({ data: ids[0] });
     } catch (err) {
+      if (err instanceof ValidationError) {
+        return res.status(400).send(err.errors);
+      }
       res.status(500).send(err.message);
     }
   };
@@ -372,48 +470,6 @@ class ModelAdmin implements IModelAdmin {
     next();
   };
   // END API Endpoints
-
-  // Create Endpoints
-  private _createViewEndpoint = () => {
-    if (this._viewEndpoint) {
-      return this._viewEndpoint;
-    }
-
-    const model = this._modelForList();
-    const fields = model.getFields().map(f => f.name);
-    const extendFields = this.listFields
-      .filter(f => {
-        if (!fields.includes(f)) {
-          if (!this[f] || typeof this[f] !== "function") {
-            throw Error(`Field ${f} doesn't exist`);
-          }
-          return f;
-        }
-      })
-      .map(f => [f, this[f]]) as [string, Function][];
-
-    this._viewEndpoint = new ViewEndpoint({
-      repository: this.repository,
-      model,
-      extendFields,
-      selectRelated: this.selectRelated,
-      prefetchRelated: this.prefetchRelated
-    });
-    return this._viewEndpoint;
-  };
-
-  private _createChangeEndpoint = () => {
-    if (this._changeEndpoint) {
-      return this._changeEndpoint;
-    }
-    this._changeEndpoint = new ChangeEndpoint({
-      repository: this.repository,
-      addModel: this._modelForAdd(),
-      editModel: this._modelForEdit(),
-      ...this.formFields()
-    });
-    return this._changeEndpoint;
-  };
 }
 
 export default ModelAdmin;

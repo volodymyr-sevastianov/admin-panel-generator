@@ -72,7 +72,7 @@ class CreateApp implements ICreateApp {
       path: this.path,
       table: tableName,
       repository: this.repository
-    });
+    }).init();
     this.updateConfig(modelAdmin, config);
   }
 
@@ -83,7 +83,7 @@ class CreateApp implements ICreateApp {
     const modelAdmin = new modelAdminConstructor({
       path: this.path,
       repository: this.repository
-    });
+    }).init();
     this.updateConfig(modelAdmin, config);
   }
 

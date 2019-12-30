@@ -48,7 +48,7 @@ class CompanyAdmin extends ModelAdmin {
   ] as [string, string, string, string][];
   model = Company;
   listFields = ["name", "email", "ownerFullName"];
-  addFormFields = ["name", "email", "description"];
+  addFormFields = ["name", "email", "owner", "description", "people"];
   listMapLabels = { name: "Company Name", ownerFullName: "Full Name" };
   // selectRelated = ["owner_id", "owner_id__profile_id", "people__profile_id"];
   selectRelated = ["owner", "owner__profile", "people__profile"];
