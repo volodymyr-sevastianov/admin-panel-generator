@@ -421,7 +421,48 @@ class ModelAdmin implements IModelAdmin {
   };
 
   editEndpoint = async (req, res, next) => {
-    res.status(204).send();
+    const { id } = req.params;
+    const table = this.editModel.__table__;
+    try {
+      const pkName = this.editModel.getPrimaryField().sourceName;
+      const m2mFields = this.editModel
+        .getRelatedFields()
+        .filter(f => this.editFormFields.includes(f.name) && f.hasMany());
+      const item = new this.editModel(req.body).clean(
+        false,
+        this.addFormFields
+      );
+      const source = item.toSourceFields({
+        fields: this.editFormFields,
+        emptyValue: null
+      });
+      const subquery = [];
+      m2mFields.forEach(f => {
+        const { name, from, to } = f.getRelatedData();
+        subquery.push({
+          table: name,
+          from,
+          to,
+          fromValue: id,
+          toValue: source[f.sourceName] || []
+        });
+        delete source[f.sourceName];
+      });
+
+      await this.repository.editWithTransaction({
+        table,
+        where: [[pkName, id]],
+        values: source,
+        returning: pkName,
+        subquery
+      });
+      res.status(204).send();
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        return res.status(400).send(err.errors);
+      }
+      res.status(500).send(err.message);
+    }
   };
 
   addEndpoint = async (req, res, next) => {
@@ -436,13 +477,11 @@ class ModelAdmin implements IModelAdmin {
       const subquery = [];
       m2mFields.forEach(f => {
         const { name, from, to } = f.getRelatedData();
-        (source[f.sourceName] || []).forEach(toValue => {
-          subquery.push({
-            table: name,
-            from,
-            to,
-            toValue
-          });
+        subquery.push({
+          table: name,
+          from,
+          to,
+          toValue: source[f.sourceName] || []
         });
         delete source[f.sourceName];
       });
